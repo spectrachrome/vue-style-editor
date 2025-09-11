@@ -74,6 +74,7 @@ onMounted(async () => {
   </div>
 
   <aside :style="{ width: asideWidth + 'px' }">
+    <div id="side-toolbar"></div>
     <eox-jsonform
       :schema="{
         type: 'object',
@@ -144,6 +145,14 @@ aside {
   bottom: 0;
   background: #fff;
   transition: none;
+}
+
+aside #side-toolbar {
+  position: fixed;
+  width: 100%;
+  height: 40px;
+  background: #999;
+  z-index: 2000;
 }
 
 .resize-handle {
