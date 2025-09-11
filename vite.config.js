@@ -8,7 +8,7 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 export default defineConfig({
   plugins: [vue(), vueDevTools()],
   optimizeDeps: {
-    include: ['@eox/map'],
+    include: ['@eox/map', '@eox/layercontrol'],
   },
   resolve: {
     alias: {

@@ -1,14 +1,41 @@
 <script setup>
+import { ref, onMounted, nextTick } from 'vue'
 import HelloWorld from './components/HelloWorld.vue'
 import TheWelcome from './components/TheWelcome.vue'
 import '@eox/map'
+import '@eox/layercontrol'
+
+const mapRef = ref(null)
+const layerControlRef = ref(null)
+
+onMounted(async () => {
+  await nextTick()
+
+  if (layerControlRef.value && mapRef.value) {
+    console.log('Connecting layer control to map:', mapRef.value)
+    layerControlRef.value.for = mapRef.value
+  }
+})
 </script>
 
 <template>
   <header></header>
 
+  <div class="layercontrol" style="width: 240px; height: 400px; z-index: 2000">
+    <eox-layercontrol
+      ref="layerControlRef"
+      idProperty="id"
+      titleProperty="title"
+    ></eox-layercontrol>
+  </div>
+
   <main>
-    <eox-map :center="[15, 48]" :layers="[{ type: 'Tile', source: { type: 'OSM' } }]" :zoom="7">
+    <eox-map
+      ref="mapRef"
+      :center="[15, 48]"
+      :layers="[{ type: 'Tile', source: { type: 'OSM' }, id: 'osm', title: 'OpenStreetMap', properties: { visible: true } }]"
+      :zoom="7"
+    >
     </eox-map>
   </main>
 </template>
@@ -47,5 +74,10 @@ eox-map {
   top: 0;
   right: 0;
   bottom: 0;
+  z-index: 1000;
+}
+
+.layercontrol {
+  background: #fff;
 }
 </style>

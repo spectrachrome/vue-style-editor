@@ -14,6 +14,8 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "@eox/jsonform": "^1.4.1",
+    "@eox/layercontrol": "^1.1.2",
     "@eox/map": "^1.25.0",
     "vue": "^3.5.18"
   },
