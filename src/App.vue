@@ -5,6 +5,9 @@ import MapView from './components/MapView.vue'
 import LayerControl from './components/LayerControl.vue'
 import CodeEditor from './components/CodeEditor.vue'
 import EditorToolbar from './components/EditorToolbar.vue'
+import MapToolbar from './components/MapToolbar.vue'
+import MapButtons from './components/MapButtons.vue'
+import { useLayerControl } from './composables/useLayerControl.js'
 
 import '@eox/map'
 import '@eox/layercontrol'
@@ -13,6 +16,9 @@ import '@eox/jsonform'
 const mapComponent = ref(null)
 const layerControlComponent = ref(null)
 const asideWidth = ref(300)
+
+// Layer control visibility
+const { isLayerControlVisible } = useLayerControl()
 const isDragging = ref(false)
 let animationId = null
 
@@ -67,9 +73,11 @@ onMounted(async () => {
 <template>
   <header></header>
 
-  <div id="layercontrol">
+  <div v-if="isLayerControlVisible" id="layercontrol">
     <LayerControl ref="layerControlComponent" />
   </div>
+
+  <MapButtons />
 
   <aside :style="{ width: asideWidth + 'px' }">
     <EditorToolbar />
@@ -77,13 +85,17 @@ onMounted(async () => {
     <div class="resize-handle" @mousedown="startResize"></div>
   </aside>
 
-  <main :style="{ left: asideWidth + 'px', width: `calc(100vw - ${asideWidth}px)` }">
+  <div id="map" :style="{ left: asideWidth + 'px', width: `calc(100vw - ${asideWidth}px)`, '--sidebar-width': asideWidth + 'px' }">
     <MapView ref="mapComponent" />
-  </main>
+    <MapToolbar />
+  </div>
 </template>
 
 <style scoped>
-main {
+/* This import is a must for any components that utilize EOxUI */
+@import url('@eox/ui/style.css');
+
+#map {
   position: fixed;
   top: 0;
   bottom: 0;
@@ -92,8 +104,8 @@ main {
 
 #layercontrol {
   position: fixed;
-  right: 10px;
-  top: 60px;
+  right: 60px;
+  top: 70px;
   background: #fff;
   width: 240px;
   height: 400px;
