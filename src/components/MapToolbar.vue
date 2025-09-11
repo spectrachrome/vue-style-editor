@@ -40,9 +40,11 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import examples from '../examples/examples.js'
+import { useExamples } from '../composables/useExamples.js'
 
 const isDropdownOpen = ref(false)
 const dropdownButtonRef = ref(null)
+const { setCurrentExample } = useExamples()
 
 const toggleDropdown = () => {
   console.log('Toggle dropdown clicked, current state:', isDropdownOpen.value)
@@ -68,7 +70,7 @@ const dropdownPosition = computed(() => {
 const selectExample = (example) => {
   console.log('Selected example:', example)
   isDropdownOpen.value = false
-  // TODO: Add logic to apply the selected example
+  setCurrentExample(example)
 }
 
 const closeDropdownOnClickOutside = (event) => {

@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(npm run dev:*)",
-      "Bash(npm run lint)"
+      "Bash(npm run lint)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:eox-a.github.io)",
+      "Bash(npm run build:*)",
+      "WebFetch(domain:fonts.google.com)"
     ],
     "deny": [],
     "ask": []

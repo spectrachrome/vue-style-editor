@@ -3,24 +3,36 @@
   <eox-map
     ref="mapRef"
     :center="[15, 48]"
-    :layers="[
-      {
-        type: 'Tile',
-        source: { type: 'OSM' },
-        id: 'osm',
-        title: 'OpenStreetMap',
-        properties: { visible: true },
-      },
-    ]"
+    :layers="mapLayers"
     :zoom="7"
   >
   </eox-map>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { useExamples } from '../composables/useExamples.js'
 
 const mapRef = ref(null)
+const { currentExampleLayer } = useExamples()
+
+const baseLayers = [
+  {
+    type: 'Tile',
+    source: { type: 'OSM' },
+    id: 'osm',
+    title: 'OpenStreetMap',
+    properties: { visible: true },
+  }
+]
+
+const mapLayers = computed(() => {
+  const layers = [...baseLayers]
+  if (currentExampleLayer.value) {
+    layers.push(currentExampleLayer.value)
+  }
+  return layers
+})
 
 defineExpose({ mapRef })
 </script>

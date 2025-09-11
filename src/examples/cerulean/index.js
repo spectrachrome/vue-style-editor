@@ -1,4 +1,4 @@
-import style from './style.json?inline'
+import style from './style.json'
 
 export default {
   name: 'Cerulean FGB',

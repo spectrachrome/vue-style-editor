@@ -81,7 +81,7 @@ onMounted(async () => {
 
   <aside :style="{ width: asideWidth + 'px' }">
     <EditorToolbar />
-    <CodeEditor />
+    <CodeEditor class="flex-grow" />
     <div class="resize-handle" @mousedown="startResize"></div>
   </aside>
 
@@ -94,6 +94,8 @@ onMounted(async () => {
 <style scoped>
 /* This import is a must for any components that utilize EOxUI */
 @import url('@eox/ui/style.css');
+/* Import local IBM Plex Mono font */
+@import url('./fonts/fonts.css');
 
 #map {
   position: fixed;
@@ -126,6 +128,8 @@ aside {
   bottom: 0;
   background: #fff;
   transition: none;
+  display: flex;
+  flex-direction: column;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -149,5 +153,10 @@ aside {
 
 .resize-handle:hover {
   background: #bdbdbd;
+}
+
+.flex-grow {
+  flex: 1;
+  min-height: 0;
 }
 </style>
