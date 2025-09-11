@@ -1,20 +1,22 @@
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
 
-import HelloWorld from './components/HelloWorld.vue'
-import TheWelcome from './components/TheWelcome.vue'
+import MapView from './components/MapView.vue'
+import LayerControl from './components/LayerControl.vue'
+import CodeEditor from './components/CodeEditor.vue'
+import EditorToolbar from './components/EditorToolbar.vue'
 
 import '@eox/map'
 import '@eox/layercontrol'
 import '@eox/jsonform'
 
-const mapRef = ref(null)
-const layerControlRef = ref(null)
+const mapComponent = ref(null)
+const layerControlComponent = ref(null)
 const asideWidth = ref(300)
 const isDragging = ref(false)
 let animationId = null
 
-const startResize = (e) => {
+const startResize = () => {
   isDragging.value = true
   document.addEventListener('mousemove', handleResize)
   document.addEventListener('mouseup', stopResize)
@@ -55,9 +57,9 @@ const stopResize = () => {
 onMounted(async () => {
   await nextTick()
 
-  if (layerControlRef.value && mapRef.value) {
-    console.log('Connecting layer control to map:', mapRef.value)
-    layerControlRef.value.for = mapRef.value
+  if (layerControlComponent.value?.layerControlRef && mapComponent.value?.mapRef) {
+    console.log('Connecting layer control to map:', mapComponent.value.mapRef)
+    layerControlComponent.value.layerControlRef.for = mapComponent.value.mapRef
   }
 })
 </script>
@@ -66,61 +68,21 @@ onMounted(async () => {
   <header></header>
 
   <div id="layercontrol">
-    <eox-layercontrol
-      ref="layerControlRef"
-      idProperty="id"
-      titleProperty="title"
-    ></eox-layercontrol>
+    <LayerControl ref="layerControlComponent" />
   </div>
 
   <aside :style="{ width: asideWidth + 'px' }">
-    <div id="side-toolbar"></div>
-    <eox-jsonform
-      :schema="{
-        type: 'object',
-        properties: {
-          code: {
-            type: 'string',
-            title: '',
-            description: '',
-            format: 'javascript',
-            options: { ace: { tabSize: 2 } },
-          },
-        },
-      }"
-      :value="{
-        code: '// Some code here\nfunction sayHello() {\n  console.log(&quot;Hello World!&quot;);  \n}\n\nsayHello();',
-      }"
-    ></eox-jsonform>
+    <EditorToolbar />
+    <CodeEditor />
     <div class="resize-handle" @mousedown="startResize"></div>
   </aside>
 
   <main :style="{ left: asideWidth + 'px', width: `calc(100vw - ${asideWidth}px)` }">
-    <eox-map
-      ref="mapRef"
-      :center="[15, 48]"
-      :layers="[
-        {
-          type: 'Tile',
-          source: { type: 'OSM' },
-          id: 'osm',
-          title: 'OpenStreetMap',
-          properties: { visible: true },
-        },
-      ]"
-      :zoom="7"
-    >
-    </eox-map>
+    <MapView ref="mapComponent" />
   </main>
 </template>
 
 <style scoped>
-eox-map {
-  width: 100%;
-  height: 100%;
-  z-index: 1000;
-}
-
 main {
   position: fixed;
   top: 0;
@@ -138,6 +100,13 @@ main {
   z-index: 2000;
 }
 
+@media (prefers-color-scheme: dark) {
+  #layercontrol {
+    background: #2d2d2d;
+    color: #fff;
+  }
+}
+
 aside {
   position: fixed;
   left: 0;
@@ -147,12 +116,11 @@ aside {
   transition: none;
 }
 
-aside #side-toolbar {
-  position: fixed;
-  width: 100%;
-  height: 40px;
-  background: #999;
-  z-index: 2000;
+@media (prefers-color-scheme: dark) {
+  aside {
+    background: #1e1e1e;
+    color: #fff;
+  }
 }
 
 .resize-handle {
