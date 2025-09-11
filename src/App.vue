@@ -10,6 +10,47 @@ import '@eox/jsonform'
 
 const mapRef = ref(null)
 const layerControlRef = ref(null)
+const asideWidth = ref(300)
+const isDragging = ref(false)
+let animationId = null
+
+const startResize = (e) => {
+  isDragging.value = true
+  document.addEventListener('mousemove', handleResize)
+  document.addEventListener('mouseup', stopResize)
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+}
+
+const handleResize = (e) => {
+  if (!isDragging.value) return
+
+  // Cancel previous animation frame
+  if (animationId) {
+    cancelAnimationFrame(animationId)
+  }
+
+  // Use requestAnimationFrame for smooth updates
+  animationId = requestAnimationFrame(() => {
+    const newWidth = Math.max(200, Math.min(800, e.clientX))
+    asideWidth.value = newWidth
+    animationId = null
+  })
+}
+
+const stopResize = () => {
+  isDragging.value = false
+  document.removeEventListener('mousemove', handleResize)
+  document.removeEventListener('mouseup', stopResize)
+  document.body.style.cursor = 'default'
+  document.body.style.userSelect = 'auto'
+
+  // Cancel any pending animation frame
+  if (animationId) {
+    cancelAnimationFrame(animationId)
+    animationId = null
+  }
+}
 
 onMounted(async () => {
   await nextTick()
@@ -32,7 +73,7 @@ onMounted(async () => {
     ></eox-layercontrol>
   </div>
 
-  <aside>
+  <aside :style="{ width: asideWidth + 'px' }">
     <eox-jsonform
       :schema="{
         type: 'object',
@@ -50,9 +91,10 @@ onMounted(async () => {
         code: '// Some code here\nfunction sayHello() {\n  console.log(&quot;Hello World!&quot;);  \n}\n\nsayHello();',
       }"
     ></eox-jsonform>
+    <div class="resize-handle" @mousedown="startResize"></div>
   </aside>
 
-  <main>
+  <main :style="{ left: asideWidth + 'px', width: `calc(100vw - ${asideWidth}px)` }">
     <eox-map
       ref="mapRef"
       :center="[15, 48]"
@@ -73,12 +115,16 @@ onMounted(async () => {
 
 <style scoped>
 eox-map {
-  position: fixed;
-  left: 300px;
-  top: 0;
-  right: 0;
-  bottom: 0;
+  width: 100%;
+  height: 100%;
   z-index: 1000;
+}
+
+main {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  transition: none;
 }
 
 #layercontrol {
@@ -96,7 +142,23 @@ aside {
   left: 0;
   top: 0;
   bottom: 0;
-  width: 300px;
   background: #fff;
+  transition: none;
+}
+
+.resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 4px;
+  background: #e0e0e0;
+  cursor: col-resize;
+  transition: background-color 0.2s ease;
+  z-index: 1001;
+}
+
+.resize-handle:hover {
+  background: #bdbdbd;
 }
 </style>
