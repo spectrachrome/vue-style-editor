@@ -1,4 +1,5 @@
 import { getFgbExtent } from './flatgeobuf.js'
+import { updateVectorLayerStyle } from '../utils/styleProcessor.js'
 
 /**
  * Format handler registry using prototype pattern
@@ -105,9 +106,12 @@ export async function processLayers(layers, editorStyle = null) {
 
     // Override layer style with editor style if provided
     if (editorStyle) {
+      // Process variables in the style first
+      const processedStyle = updateVectorLayerStyle(editorStyle)
+      
       processedLayer = {
         ...processedLayer,
-        style: editorStyle
+        style: processedStyle
       }
       
       // Also set complete layerConfig for eox-map compatibility
@@ -118,7 +122,7 @@ export async function processLayers(layers, editorStyle = null) {
         processedLayer.properties.layerConfig = {
           ...processedLayer.properties.layerConfig,
           schema: editorStyle.jsonform || editorStyle.schema,
-          style: editorStyle,
+          style: processedStyle,  // Use processed style
           legend: editorStyle.legend
         }
       }

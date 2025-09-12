@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue'
 import { generateMapLayer, detectDataFormat } from '../utils/layerGenerator.js'
 import { processLayers } from '../formats/formatRegistry.js'
+import { updateVectorLayerStyle } from '../utils/styleProcessor.js'
 
 const currentExample = ref(null)
 const currentExampleStyle = ref(null)
@@ -20,7 +21,9 @@ export function useExamples() {
 
         processedLayers.forEach((l) => {
           if (l.type === 'Vector') {
-            l.style = currentExampleStyle.value
+            // Process variables in style before applying
+            const processedStyle = updateVectorLayerStyle(currentExampleStyle.value)
+            l.style = processedStyle
             // Also set complete layerConfig for eox-map compatibility
             if (!l.properties.layerConfig) {
               l.properties.layerConfig = {}
@@ -28,7 +31,7 @@ export function useExamples() {
             l.properties.layerConfig = {
               ...l.properties.layerConfig,
               schema: currentExampleStyle.value.jsonform || currentExampleStyle.value.schema,
-              style: currentExampleStyle.value,
+              style: processedStyle,  // Use processed style
               legend: currentExampleStyle.value.legend
             }
           }
@@ -77,7 +80,9 @@ export function useExamples() {
 
       processedLayers.forEach((l) => {
         if (l.type === 'Vector') {
-          l.style = newStyle
+          // Process variables in style before applying
+          const processedStyle = updateVectorLayerStyle(newStyle)
+          l.style = processedStyle
           // Also set complete layerConfig for eox-map compatibility
           if (!l.properties.layerConfig) {
             l.properties.layerConfig = {}
@@ -85,10 +90,9 @@ export function useExamples() {
           l.properties.layerConfig = {
             ...l.properties.layerConfig,
             schema: newStyle.jsonform || newStyle.schema,
-            style: newStyle,
+            style: processedStyle,  // Use processed style
             legend: newStyle.legend
           }
-          
         }
       })
 
@@ -96,9 +100,11 @@ export function useExamples() {
     } else if (currentExample.value) {
       // Update legacy layer style
       const updatedLayers = dataLayers.value.map((layer) => {
+        // Process variables in style for legacy layers too
+        const processedStyle = updateVectorLayerStyle(newStyle)
         const updatedLayer = {
           ...layer,
-          style: newStyle,
+          style: processedStyle,
         }
         // Also set complete layerConfig for eox-map compatibility
         if (layer.type === 'Vector') {
@@ -108,7 +114,7 @@ export function useExamples() {
           updatedLayer.properties.layerConfig = {
             ...updatedLayer.properties.layerConfig,
             schema: newStyle.jsonform || newStyle.schema,
-            style: newStyle,
+            style: processedStyle,  // Use processed style
             legend: newStyle.legend
           }
         }

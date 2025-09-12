@@ -1,4 +1,6 @@
 {
+  "stroke-color": "black",
+  "stroke-width": 1,
   "legend": [
     {
       "title": "Total concentration colour code standard",
@@ -259,36 +261,34 @@
       "case",
       ["==", ["get", "polygon_type"], "Ice Free"],
       [0, 100, 255],
-      ["==", ["get", "polaris_standard_pc_nis_rio"], "RIO > 20: Normal Operation"],
+      ["==", ["get", ["var", "combined_prop"]], "RIO > 20: Normal Operation"],
       [54, 122, 74, 1],
-      ["==", ["get", "polaris_standard_pc_nis_rio"], ">= 10 RIO < 20: Normal Operation"],
+      ["==", ["get", ["var", "combined_prop"]], ">= 10 RIO < 20: Normal Operation"],
       [62, 150, 85, 1],
-      ["==", ["get", "polaris_standard_pc_nis_rio"], ">= 0 RIO < 10: Normal Operation"],
+      ["==", ["get", ["var", "combined_prop"]], ">= 0 RIO < 10: Normal Operation"],
       [102, 188, 118, 1],
       [
         "==",
-        ["get", "polaris_standard_pc_nis_rio"],
+        ["get", ["var", "combined_prop"]],
         ">= -10 RIO < 0: Operation subject to special consideration"
       ],
       [252, 251, 1, 1],
       [
         "==",
-        ["get", "polaris_standard_pc_nis_rio"],
+        ["get", ["var", "combined_prop"]],
         ">= -20 RIO < -10: Operation subject to special consideration"
       ],
       [227, 108, 9, 1],
       [
         "==",
-        ["get", "polaris_standard_pc_nis_rio"],
+        ["get", ["var", "combined_prop"]],
         "RIO < -20: Operation subject to special consideration"
       ],
       [188, 1, 6, 1],
-      ["==", ["get", "polaris_standard_pc_nis_rio"], "<= -10 RIO < 0: Elevated operational risk"],
+      ["==", ["get", ["var", "combined_prop"]], "<= -10 RIO < 0: Elevated operational risk"],
       [252, 251, 1, 1],
       [0, 0, 0, 1]
     ],
     [0, 0, 0, 0]
-  ],
-  "stroke-color": "black",
-  "stroke-width": 1
+  ]
 }
