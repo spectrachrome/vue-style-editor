@@ -6,7 +6,7 @@
     <!-- Loading overlay - ONLY an overlay, never removes the map DOM -->
     <div v-if="isMapLoading" class="map-loading-overlay">
       <div class="loading-content">
-        <div class="loader large"></div>
+        <progress class="circle large"></progress>
         <p class="loading-hint">{{ loadingHint }}</p>
       </div>
     </div>
@@ -42,8 +42,8 @@ const mapViewParams = computed(() => {
   const exampleLayers = dataLayers.value
 
   // Look for layers with calculated extents
-  const layersWithExtent = exampleLayers.filter(layer =>
-    layer.extent && Array.isArray(layer.extent) && layer.extent.length === 4
+  const layersWithExtent = exampleLayers.filter(
+    (layer) => layer.extent && Array.isArray(layer.extent) && layer.extent.length === 4,
   )
 
   if (layersWithExtent.length > 0) {
@@ -120,7 +120,7 @@ const sanitizeLayer = (layer) => {
     // For Vector layers, put style in both places
     sanitized.properties.layerConfig = {
       ...sanitized.properties.layerConfig,
-      style: sanitized.style
+      style: sanitized.style,
     }
     // Keep sanitized.style as is for Vector layers
   } else if (sanitized.type !== 'Vector') {
@@ -172,20 +172,20 @@ function calculateZoomFromExtent(extent) {
   // These values are rough approximations for EPSG:3857
   const maxDimension = Math.max(width, height)
 
-  if (maxDimension > 20000000) return 2  // World view
-  if (maxDimension > 10000000) return 3  // Continental
-  if (maxDimension > 5000000) return 4   // Large country
-  if (maxDimension > 2000000) return 5   // Country
-  if (maxDimension > 1000000) return 6   // Large region
-  if (maxDimension > 500000) return 7    // Region
-  if (maxDimension > 200000) return 8    // Large city
-  if (maxDimension > 100000) return 9    // City
-  if (maxDimension > 50000) return 10    // Town
-  if (maxDimension > 20000) return 11    // District
-  if (maxDimension > 10000) return 12    // Neighborhood
-  if (maxDimension > 5000) return 13     // Small area
-  if (maxDimension > 2000) return 14     // Very small area
-  return 15  // Maximum detail
+  if (maxDimension > 20000000) return 2 // World view
+  if (maxDimension > 10000000) return 3 // Continental
+  if (maxDimension > 5000000) return 4 // Large country
+  if (maxDimension > 2000000) return 5 // Country
+  if (maxDimension > 1000000) return 6 // Large region
+  if (maxDimension > 500000) return 7 // Region
+  if (maxDimension > 200000) return 8 // Large city
+  if (maxDimension > 100000) return 9 // City
+  if (maxDimension > 50000) return 10 // Town
+  if (maxDimension > 20000) return 11 // District
+  if (maxDimension > 10000) return 12 // Neighborhood
+  if (maxDimension > 5000) return 13 // Small area
+  if (maxDimension > 2000) return 14 // Very small area
+  return 15 // Maximum detail
 }
 
 // Set layers property directly on the web component
@@ -194,14 +194,14 @@ const updateMapLayers = async () => {
   if (mapRef.value) {
     const layers = mapLayers.value.map(sanitizeLayer)
 
-
     try {
-
       mapRef.value.layers = layers
-
     } catch (error) {
       console.error('Error setting layers on eox-map:', error)
-      console.error('Layer details:', layers.map(l => ({ id: l.id, type: l.type, hasStyle: !!l.style })))
+      console.error(
+        'Layer details:',
+        layers.map((l) => ({ id: l.id, type: l.type, hasStyle: !!l.style })),
+      )
     }
   } else {
     console.warn('MapView: mapRef.value is null/undefined in updateMapLayers')
