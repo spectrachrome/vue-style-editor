@@ -2,14 +2,18 @@ import { ref, computed } from 'vue'
 import { generateMapLayer, detectDataFormat } from '../utils/layerGenerator.js'
 import { processLayers } from '../formats/formatRegistry.js'
 import { updateVectorLayerStyle } from '../utils/styleProcessor.js'
+import { useLoading } from './useLoading.js'
 
 const currentExample = ref(null)
 const currentExampleStyle = ref(null)
 const dataLayers = ref([])
 
+const { startMapLoading, stopMapLoading } = useLoading()
 
 export function useExamples() {
   const setCurrentExample = async (example) => {
+    startMapLoading()
+
     currentExample.value = example
     currentExampleStyle.value =
       typeof example.style === 'string' ? JSON.parse(example.style) : example.style
@@ -55,6 +59,11 @@ export function useExamples() {
     } else {
       dataLayers.value = []
     }
+
+    // Stop loading after a brief delay to let map update
+    setTimeout(() => {
+      stopMapLoading()
+    }, 1000)
   }
 
   const addLayer = (layerConfig) => {
@@ -72,6 +81,8 @@ export function useExamples() {
   }
 
   const updateCurrentStyle = async (newStyle) => {
+    startMapLoading()
+
     currentExampleStyle.value = newStyle
 
     // Re-process layers with the new style
@@ -122,6 +133,11 @@ export function useExamples() {
       })
       dataLayers.value = updatedLayers
     }
+
+    // Stop loading after style update completes
+    setTimeout(() => {
+      stopMapLoading()
+    }, 800)
   }
 
   const clearCurrentExample = () => {

@@ -1,15 +1,27 @@
 <!-- MapView component for the main map display -->
 <template>
-  <eox-map ref="mapRef" :center="mapCenter" :zoom="mapZoom"> </eox-map>
+  <div class="map-container">
+    <eox-map ref="mapRef" :center="mapCenter" :zoom="mapZoom"> </eox-map>
+
+    <!-- Loading overlay - ONLY an overlay, never removes the map DOM -->
+    <div v-if="isMapLoading" class="map-loading-overlay">
+      <div class="loading-content">
+        <div class="loader large"></div>
+        <p class="loading-hint">{{ loadingHint }}</p>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useExamples } from '../composables/useExamples.js'
+import { useLoading } from '../composables/useLoading.js'
 import proj4 from 'proj4'
 
 const mapRef = ref(null)
 const { dataLayers } = useExamples()
+const { isMapLoading, loadingHint } = useLoading()
 
 const baseLayers = [
   {
@@ -184,9 +196,9 @@ const updateMapLayers = async () => {
 
 
     try {
-      
+
       mapRef.value.layers = layers
-      
+
     } catch (error) {
       console.error('Error setting layers on eox-map:', error)
       console.error('Layer details:', layers.map(l => ({ id: l.id, type: l.type, hasStyle: !!l.style })))
@@ -222,9 +234,58 @@ defineExpose({ mapRef })
 </script>
 
 <style scoped>
+.map-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
 eox-map {
   width: 100%;
   height: 100%;
   z-index: 1000;
+}
+
+.map-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+@media (prefers-color-scheme: dark) {
+  .map-loading-overlay {
+    background-color: rgba(30, 30, 30, 0.9);
+  }
+}
+
+.loading-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.loading-hint {
+  font-family: 'IBM Plex Mono', 'Consolas', 'Monaco', monospace;
+  font-size: 0.9rem;
+  color: #666;
+  margin: 0;
+  max-width: 300px;
+  line-height: 1.4;
+}
+
+@media (prefers-color-scheme: dark) {
+  .loading-hint {
+    color: #aaa;
+  }
 }
 </style>
