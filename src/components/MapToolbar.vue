@@ -16,7 +16,7 @@
       <Teleport to="body">
         <div v-if="isDropdownOpen" class="dropdown-menu" :style="dropdownPosition" @click.stop>
           <div
-            v-for="(example, index) in examples"
+            v-for="example in examples"
             :key="example.name"
             class="dropdown-item"
             @click="selectExample(example)"
