@@ -21,10 +21,7 @@
             class="dropdown-item"
             @click="selectExample(example)"
           >
-            {{ index + 1 }}. {{ example.name }}
-          </div>
-          <div class="dropdown-item" style="background: yellow; color: black">
-            DEBUG: {{ examples.length }} examples found
+            {{ example.name }}
           </div>
         </div>
       </Teleport>
