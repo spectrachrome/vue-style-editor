@@ -9,7 +9,7 @@
  */
 export function detectDataFormat(dataUrl) {
   const url = dataUrl.toLowerCase()
-  
+
   // Check file extensions
   if (url.endsWith('.fgb')) {
     return 'FlatGeobuf'
@@ -20,7 +20,7 @@ export function detectDataFormat(dataUrl) {
   if (url.endsWith('.tif') || url.endsWith('.tiff') || url.endsWith('.geotiff')) {
     return 'GeoTIFF'
   }
-  
+
   // Check for common patterns in URLs
   if (url.includes('geojson') || url.includes('json')) {
     return 'GeoJSON'
@@ -31,7 +31,7 @@ export function detectDataFormat(dataUrl) {
   if (url.includes('fgb') || url.includes('flatgeobuf')) {
     return 'FlatGeobuf'
   }
-  
+
   return 'Unknown'
 }
 
@@ -43,34 +43,34 @@ export function detectDataFormat(dataUrl) {
  */
 export function generateLayerSource(dataUrl, format) {
   const detectedFormat = format || detectDataFormat(dataUrl)
-  
+
   switch (detectedFormat) {
     case 'FlatGeobuf':
       return {
         type: 'Vector',
         url: dataUrl,
-        format: 'FlatGeobuf'
+        format: 'FlatGeoBuf',
       }
-      
+
     case 'GeoJSON':
       return {
         type: 'Vector',
         url: dataUrl,
-        format: 'GeoJSON'
+        format: 'GeoJSON',
       }
-      
+
     case 'GeoTIFF':
       return {
         type: 'GeoTIFF',
-        url: dataUrl
+        url: dataUrl,
       }
-      
+
     default:
       // Fallback to GeoJSON for unknown formats
       return {
         type: 'Vector',
         url: dataUrl,
-        format: 'GeoJSON'
+        format: 'GeoJSON',
       }
   }
 }
@@ -86,20 +86,13 @@ export function generateLayerSource(dataUrl, format) {
  * @param {Object} [options.properties] - Additional layer properties
  * @returns {Object} - Complete EOX map layer configuration
  */
-export function generateMapLayer({
-  dataUrl,
-  name,
-  style,
-  format,
-  id,
-  properties = {}
-}) {
+export function generateMapLayer({ dataUrl, name, style, format, id, properties = {} }) {
   const detectedFormat = format || detectDataFormat(dataUrl)
   const source = generateLayerSource(dataUrl, detectedFormat)
-  
+
   // Determine layer type based on data format
   const layerType = detectedFormat === 'GeoTIFF' ? 'WebGLTile' : 'Vector'
-  
+
   const layer = {
     type: layerType,
     source,
@@ -107,10 +100,10 @@ export function generateMapLayer({
     title: name,
     properties: {
       visible: true,
-      ...properties
-    }
+      ...properties,
+    },
   }
-  
+
   // Add style configuration if provided
   if (style) {
     if (layerType === 'Vector') {
@@ -122,7 +115,7 @@ export function generateMapLayer({
       layer.style = style
     }
   }
-  
+
   return layer
 }
 
@@ -135,7 +128,7 @@ export function generateMapLayers(datasets) {
   return datasets.map((dataset, index) => {
     return generateMapLayer({
       ...dataset,
-      id: dataset.id || `layer-${index}-${Date.now()}`
+      id: dataset.id || `layer-${index}-${Date.now()}`,
     })
   })
 }

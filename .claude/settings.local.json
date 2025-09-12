@@ -7,7 +7,11 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:eox-a.github.io)",
       "Bash(npm run build:*)",
-      "WebFetch(domain:fonts.google.com)"
+      "WebFetch(domain:fonts.google.com)",
+      "Bash(npm ls:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []

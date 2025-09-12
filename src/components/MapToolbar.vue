@@ -1,34 +1,29 @@
 <template>
   <div class="map-toolbar">
     <button class="small">Import Data</button>
-    
+
     <div class="dropdown-container">
-      <button 
+      <button
         ref="dropdownButtonRef"
-        class="small" 
+        class="small"
         @click="toggleDropdown"
         :class="{ active: isDropdownOpen }"
       >
         Examples
         <i class="dropdown-arrow">▼</i>
       </button>
-      
+
       <Teleport to="body">
-        <div 
-          v-if="isDropdownOpen" 
-          class="dropdown-menu"
-          :style="dropdownPosition"
-          @click.stop
-        >
-          <div 
-            v-for="(example, index) in examples" 
+        <div v-if="isDropdownOpen" class="dropdown-menu" :style="dropdownPosition" @click.stop>
+          <div
+            v-for="(example, index) in examples"
             :key="example.name"
             class="dropdown-item"
             @click="selectExample(example)"
           >
             {{ index + 1 }}. {{ example.name }}
           </div>
-          <div class="dropdown-item" style="background: yellow; color: black;">
+          <div class="dropdown-item" style="background: yellow; color: black">
             DEBUG: {{ examples.length }} examples found
           </div>
         </div>
@@ -57,13 +52,13 @@ const dropdownPosition = computed(() => {
   if (!isDropdownOpen.value || !dropdownButtonRef.value) {
     return {}
   }
-  
+
   const buttonRect = dropdownButtonRef.value.getBoundingClientRect()
   return {
     position: 'fixed',
     top: `${buttonRect.bottom + 8}px`,
     right: `${window.innerWidth - buttonRect.right}px`,
-    minWidth: '200px'
+    minWidth: '200px',
   }
 })
 
@@ -106,13 +101,9 @@ onUnmounted(() => {
 
 /* Button transparency and blur styling */
 .map-toolbar button {
-  background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: all 0.2s ease;
+  background: #004170ee !important;
 }
 
 .map-toolbar button:hover {
@@ -127,7 +118,7 @@ onUnmounted(() => {
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: #fff;
   }
-  
+
   .map-toolbar button:hover {
     background: rgba(45, 45, 45, 0.9);
   }
@@ -190,12 +181,12 @@ button.active .dropdown-arrow {
     background: rgba(45, 45, 45, 0.95);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   }
-  
+
   .dropdown-item {
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     color: #fff;
   }
-  
+
   .dropdown-item:hover {
     background: rgba(255, 255, 255, 0.1);
   }

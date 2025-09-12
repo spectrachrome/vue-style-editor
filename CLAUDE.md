@@ -40,21 +40,72 @@ Examples are organized in `src/examples/`:
 **Example Loading Architecture:**
 - `useExamples.js` composable manages example state reactively
 - MapToolbar dropdown triggers example selection via `setCurrentExample()`
-- MapView component dynamically adds layers using format-agnostic layer generation
-- CodeEditor displays example styles as formatted JSON in ACE editor
-- `layerGenerator.js` utility handles multiple data formats automatically
+- MapView component dynamically adds layers using format registry system
+- CodeEditor displays example styles as formatted JSON in ACE editor with real-time updates
+- Format handlers process layers with specialized logic (e.g., FGB extent calculation)
 
 **Data Format Support:**
 - **FlatGeobuf** (`.fgb`) - Efficient binary vector format
-- **GeoJSON** (`.geojson`, `.json`) - Standard vector format  
+- **GeoJSON** (`.geojson`, `.json`) - Standard vector format
 - **GeoTIFF** (`.tif`, `.tiff`, `.geotiff`) - Raster imagery format
 - Auto-detection based on URL/file extension with fallback to GeoJSON
+
+### Format Registry System
+
+**Architecture (`src/formats/formatRegistry.js`):**
+- Prototype-based handler pattern using Object.create()
+- HashMap registry for format-specific processing logic
+- Extensible design for adding new format handlers
+
+**Format Handlers:**
+- `FormatHandler` - Base prototype with `processLayer()` and `supports()` methods
+- `FlatGeoBufHandler` - Specialized handler that calculates FGB extents using `getFgbExtent()`
+- `DefaultHandler` - Fallback for unsupported formats
+
+**Key Functions:**
+- `processLayers(layers, editorStyle)` - Processes layers with format handlers and applies editor style
+- `getFormatHandler(sourceType)` - Returns appropriate handler for
+- `registerFormatHandler(sourceType, handler)` - Registers new format handlers
+
+**Benefits:**
+- Eliminates duplicate URL fetching (extent calculation reuses layer data)
+- Clean separation of format-specific logic
+- Editor style always overrides example/layer styles
+- Easy to extend for new data formats
+
+**FGB Processing Details:**
+- `getFgbExtent()` handles FlatGeoBuf deserialization correctly (iterates over features, not featureCollection.features)
+- Transforms coordinates from EPSG:4326 to EPSG:3857 for proper extent calculation
+- Robust error handling for malformed, empty, or inaccessible FGB data
+- Graceful fallback when extent calculation fails - layers still load without extent
 
 ### Key Technical Details
 
 - **Vite Configuration**: Optimizes EOX dependencies, uses `@` alias for `src/`
 - **Component Lifecycle**: Uses `onMounted` + `nextTick` to ensure DOM ready before connecting layer control to map
+- **Web Component Integration**: Direct property assignment for eox-map layers to avoid Vue attribute coercion
+- **Layer Sanitization**: Deep clones layers to remove Vue reactivity proxies and ensures all layers have required properties for eox-map compatibility
+- **Style Compatibility**: Detects complex custom styles and removes them to prevent OpenLayers errors, allowing eox-map to use default styling
 - **Styling**: Mix of scoped component styles and fixed positioning for complex layout
+
+### Style Management Flow
+
+**Editor as Source of Truth:**
+- CodeEditor captures real-time changes via `@change` event on `eox-jsonform`
+- `handleStyleChange()` parses JSON and calls `updateCurrentStyle()` on valid changes
+- `useExamples.updateCurrentStyle()` re-processes layers with new style
+- Both new layer definitions and legacy layers receive editor style override
+
+**Style Update Sequence:**
+1. **Initial Load**: Example style → editor → layers (with format processing)
+2. **User Edit**: Editor change → JSON parse → `updateCurrentStyle()` → layer re-processing
+3. **Layer Update**: Format handlers apply editor style override to all data layers
+4. **Map Refresh**: MapView computed property triggers with updated layers
+
+**Key Functions:**
+- `setCurrentExample(example)` - Loads example and applies editor style to layers
+- `updateCurrentStyle(newStyle)` - Re-processes all layers with new editor style
+- `processLayers(layers, editorStyle)` - Applies editor style override during format processing
 
 ### ACE Editor Integration
 
@@ -73,7 +124,7 @@ const editorConfig = computed(() => {
   const lineHeight = Math.ceil(fontSize * 1.4)
   const availableHeight = containerHeight.value - padding
   const maxLines = Math.floor(availableHeight / lineHeight)
-  
+
   return {
     maxPixelHeight: Math.max(200, availableHeight),
     maxLines: Math.max(10, maxLines),
@@ -81,6 +132,13 @@ const editorConfig = computed(() => {
   }
 })
 ```
+
+**Event Handling:**
+- **Direct ACE Access**: Uses `querySelector("eox-jsonform").editor.editors["root.code"]["ace_editor_instance"]` pattern (from Lit app)
+- **Debounced Updates**: 650ms debounce using lodash/debounce to prevent excessive style updates while typing
+- **Real-time Feedback**: ACE editor `change` events provide immediate response without overwhelming the system
+- **Focus Control**: Available via `.textInput.getElement().focus()` for programmatic focus management
+- **Error Handling**: Graceful handling of JSON parse errors during editing (silently ignored until valid)
 
 ## Dependencies
 
@@ -93,6 +151,8 @@ const editorConfig = computed(() => {
 - Supports multiple layer types: Vector (for geospatial vectors) and WebGLTile (for rasters)
 - Base layers (OSM) + dynamic example layers managed through reactive arrays
 - Layer structure: `{ type, source: { type, url, format }, id, title, style, properties }`
+- **Deduplication Logic**: Automatically detects and prevents duplicate base layers (e.g., OSM) when examples include their own base layers
+- **Vue Integration**: Uses direct property assignment (`mapRef.value.layers = layersArray`) to avoid Vue coercing arrays to strings in web components
 
 **Layer Generation Utilities (`src/utils/layerGenerator.js`):**
 - `detectDataFormat(url)` - Auto-detects format from URL/extension

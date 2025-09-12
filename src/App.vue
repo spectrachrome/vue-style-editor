@@ -10,6 +10,7 @@ import MapButtons from './components/MapButtons.vue'
 import { useLayerControl } from './composables/useLayerControl.js'
 
 import '@eox/map'
+import '@eox/map/dist/eox-map-advanced-layers-and-sources.js'
 import '@eox/layercontrol'
 import '@eox/jsonform'
 
@@ -85,7 +86,14 @@ onMounted(async () => {
     <div class="resize-handle" @mousedown="startResize"></div>
   </aside>
 
-  <div id="map" :style="{ left: asideWidth + 'px', width: `calc(100vw - ${asideWidth}px)`, '--sidebar-width': asideWidth + 'px' }">
+  <div
+    id="map"
+    :style="{
+      left: asideWidth + 'px',
+      width: `calc(100vw - ${asideWidth}px)`,
+      '--sidebar-width': asideWidth + 'px',
+    }"
+  >
     <MapView ref="mapComponent" />
     <MapToolbar />
   </div>

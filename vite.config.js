@@ -6,7 +6,16 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [vue(), vueDevTools()],
+  plugins: [
+    vue({
+      template: {
+        compilerOptions: {
+          isCustomElement: (tag) => tag.startsWith('eox-')
+        }
+      }
+    }), 
+    vueDevTools()
+  ],
   optimizeDeps: {
     include: ['@eox/map', '@eox/layercontrol', '@eox/jsonform'],
   },

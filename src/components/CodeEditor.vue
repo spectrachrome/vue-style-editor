@@ -1,11 +1,15 @@
 <template>
   <div ref="containerRef" class="code-editor-container">
-    <eox-jsonform :schema="editorSchema" :value="formValue"></eox-jsonform>
+    <eox-jsonform 
+      :schema="editorSchema" 
+      :value="formValue"
+    ></eox-jsonform>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { debounce } from 'lodash'
 import { useExamples } from '../composables/useExamples.js'
 
 const isDarkMode = ref(false)
@@ -13,7 +17,8 @@ const containerRef = ref(null)
 const containerHeight = ref(0)
 let mediaQuery = null
 let resizeObserver = null
-const { currentExampleStyle } = useExamples()
+let aceEditorInstance = null
+const { currentExampleStyle, updateCurrentStyle } = useExamples()
 
 const updateDarkMode = (e) => {
   isDarkMode.value = e.matches
@@ -23,6 +28,64 @@ const updateContainerHeight = () => {
   if (containerRef.value) {
     containerHeight.value = containerRef.value.clientHeight
   }
+}
+
+// Debounced style update function (650ms delay)
+const debouncedStyleUpdate = debounce((newStyle) => {
+  updateCurrentStyle(newStyle)
+}, 650)
+
+const setupAceEditor = async () => {
+  // Wait for eox-jsonform to be fully initialized
+  await nextTick()
+  
+  // Small delay to ensure the ACE editor is ready
+  setTimeout(() => {
+    try {
+      const aceEditor = containerRef.value
+        ?.querySelector("eox-jsonform")
+        ?.editor?.editors?.["root.code"]?.["ace_editor_instance"]
+
+      if (aceEditor) {
+        aceEditorInstance = aceEditor
+        
+        // Add direct change listener with debouncing
+        aceEditor.on('change', handleDirectAceChange)
+        
+        console.log('Direct ACE editor access established with 650ms debouncing')
+      } else {
+        console.warn('Could not access ACE editor instance')
+      }
+    } catch (error) {
+      console.warn('Error setting up direct ACE editor access:', error)
+    }
+  }, 100)
+}
+
+const handleDirectAceChange = () => {
+  if (!aceEditorInstance) return
+  
+  try {
+    const content = aceEditorInstance.getValue()
+    const newStyle = JSON.parse(content)
+    // Use debounced update to prevent excessive calls
+    debouncedStyleUpdate(newStyle)
+  } catch (error) {
+    // Silently ignore JSON parse errors during editing
+    // Only log if it's a different type of error
+    if (!(error instanceof SyntaxError)) {
+      console.warn('Error in ACE change handler:', error)
+    }
+  }
+}
+
+const cleanupAceEditor = () => {
+  if (aceEditorInstance) {
+    aceEditorInstance.off('change', handleDirectAceChange)
+    aceEditorInstance = null
+  }
+  // Cancel any pending debounced calls
+  debouncedStyleUpdate.cancel()
 }
 
 const editorConfig = computed(() => {
@@ -59,6 +122,9 @@ onMounted(() => {
     })
     resizeObserver.observe(containerRef.value)
   }
+
+  // Setup direct ACE editor access
+  setupAceEditor()
 })
 
 onUnmounted(() => {
@@ -68,6 +134,9 @@ onUnmounted(() => {
   if (resizeObserver) {
     resizeObserver.disconnect()
   }
+  
+  // Cleanup ACE editor
+  cleanupAceEditor()
 })
 
 const formValue = computed(() => ({
