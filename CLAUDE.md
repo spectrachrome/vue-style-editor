@@ -186,6 +186,14 @@ Recommended VS Code extensions (see `.vscode/extensions.json`):
 
 Auto-formatting and ESLint fixes on save are enabled by default.
 
+## Development Philosophy
+
+**KISS Principle**: Start simple, iterate based on evidence, avoid over-engineering upfront.
+
+1. Log actual data structures before building complex logic
+2. Make minimal, testable changes  
+3. Refine based on real behavior, not assumptions
+
 ## Git Commit Guidelines
 
 When creating git commits, follow these conventions:
