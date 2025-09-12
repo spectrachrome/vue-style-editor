@@ -108,12 +108,12 @@ export async function processLayers(layers, editorStyle = null) {
     if (editorStyle) {
       // Process variables in the style first
       const processedStyle = updateVectorLayerStyle(editorStyle)
-      
+
       processedLayer = {
         ...processedLayer,
         style: processedStyle
       }
-      
+
       // Also set complete layerConfig for eox-map compatibility
       if (processedLayer.type === 'Vector') {
         if (!processedLayer.properties.layerConfig) {

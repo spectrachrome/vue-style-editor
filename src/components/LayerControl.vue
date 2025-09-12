@@ -16,7 +16,7 @@ const { currentExampleStyle, updateCurrentStyle } = useExamples()
 
 const handleLayerConfigChange = (event) => {
   console.log('LayerControl changed:', JSON.stringify(event.detail, null, 2))
-  
+
   // TODO: Once we see the actual event structure, implement the minimal mapping needed
 }
 

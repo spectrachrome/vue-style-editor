@@ -7,14 +7,14 @@
 export function updateVectorLayerStyle(styles) {
   // Return flat style if no variables to process
   let returnStyle = styles;
-  
+
   // Check if variables are defined and need to be "burned in" first
   if ("variables" in styles) {
     // Stringify all the styles to be able to search quickly
     let rawStyle = JSON.stringify(styles);
     // Extract updated variables
     const { variables } = styles;
-    
+
     // Loop through the variables keys
     for (const key in variables) {
       // OpenLayers styles expects numbers to be assigned as typeof number
@@ -29,9 +29,9 @@ export function updateVectorLayerStyle(styles) {
         );
       }
     }
-    
+
     returnStyle = JSON.parse(rawStyle);
   }
-  
+
   return returnStyle;
 }

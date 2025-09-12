@@ -13,7 +13,7 @@ export default defineConfig({
           isCustomElement: (tag) => tag.startsWith('eox-')
         }
       }
-    }), 
+    }),
     vueDevTools()
   ],
   optimizeDeps: {

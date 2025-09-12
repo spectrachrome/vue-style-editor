@@ -68,11 +68,11 @@ const closeDropdownOnClickOutside = (event) => {
 const autoSelectFromURL = () => {
   const urlParams = new URLSearchParams(window.location.search)
   const exampleParam = urlParams.get('example')
-  
+
   if (exampleParam) {
     // Find example by ID
     const example = examples.find(ex => ex.id === exampleParam)
-    
+
     if (example) {
       setCurrentExample(example)
     } else {
@@ -85,7 +85,7 @@ const autoSelectFromURL = () => {
 const selectExample = (example) => {
   isDropdownOpen.value = false
   setCurrentExample(example)
-  
+
   // Set URL parameter using example ID
   const url = new URL(window.location)
   if (example.id) {

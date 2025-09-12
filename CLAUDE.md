@@ -191,7 +191,7 @@ Auto-formatting and ESLint fixes on save are enabled by default.
 **KISS Principle**: Start simple, iterate based on evidence, avoid over-engineering upfront.
 
 1. Log actual data structures before building complex logic
-2. Make minimal, testable changes  
+2. Make minimal, testable changes
 3. Refine based on real behavior, not assumptions
 
 ## Git Commit Guidelines
@@ -207,7 +207,7 @@ Use [Keep a Changelog](https://keepachangelog.com/) format for detailing changes
 
 ```
 - **Added** - for new features
-- **Changed** - for changes in existing functionality  
+- **Changed** - for changes in existing functionality
 - **Deprecated** - for soon-to-be removed features
 - **Removed** - for now removed features
 - **Fixed** - for any bug fixes
