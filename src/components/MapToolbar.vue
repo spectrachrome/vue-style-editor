@@ -17,11 +17,12 @@
         <div v-if="isDropdownOpen" class="dropdown-menu" :style="dropdownPosition" @click.stop>
           <div
             v-for="example in examples"
-            :key="example.name"
+            :key="example.id || example.name"
             class="dropdown-item"
             @click="selectExample(example)"
           >
             {{ example.name }}
+            <span v-if="example.format" class="format-tag">{{ example.format.toUpperCase() }}</span>
           </div>
         </div>
       </Teleport>
@@ -56,10 +57,6 @@ const dropdownPosition = computed(() => {
   }
 })
 
-const selectExample = (example) => {
-  isDropdownOpen.value = false
-  setCurrentExample(example)
-}
 
 const closeDropdownOnClickOutside = (event) => {
   if (!event.target.closest('.dropdown-container')) {
@@ -67,8 +64,41 @@ const closeDropdownOnClickOutside = (event) => {
   }
 }
 
+// Auto-select example from URL query parameter
+const autoSelectFromURL = () => {
+  const urlParams = new URLSearchParams(window.location.search)
+  const exampleParam = urlParams.get('example')
+  
+  if (exampleParam) {
+    // Find example by ID
+    const example = examples.find(ex => ex.id === exampleParam)
+    
+    if (example) {
+      setCurrentExample(example)
+    } else {
+      console.warn(`Example "${exampleParam}" not found. Available examples:`, examples.map(ex => ex.name))
+    }
+  }
+}
+
+// Update URL when example is selected
+const selectExample = (example) => {
+  isDropdownOpen.value = false
+  setCurrentExample(example)
+  
+  // Set URL parameter using example ID
+  const url = new URL(window.location)
+  if (example.id) {
+    url.searchParams.set('example', example.id)
+  } else {
+    url.searchParams.delete('example')
+  }
+  window.history.pushState({}, '', url)
+}
+
 onMounted(() => {
   document.addEventListener('click', closeDropdownOnClickOutside)
+  autoSelectFromURL()
 })
 
 onUnmounted(() => {
@@ -167,6 +197,22 @@ button.active .dropdown-arrow {
 
 .dropdown-item:hover {
   background: rgba(0, 0, 0, 0.05);
+}
+
+.dropdown-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.format-tag {
+  font-size: 10px;
+  background: #007bff;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: bold;
+  margin-left: 8px;
 }
 
 @media (prefers-color-scheme: dark) {
