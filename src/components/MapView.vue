@@ -51,12 +51,18 @@ const mapCenter = computed(() => mapViewParams.value.center)
 const mapZoom = computed(() => mapViewParams.value.zoom)
 
 const mapLayers = computed(() => {
-  const exampleLayers = dataLayers.value
+  const exampleLayers = dataLayers.value || []
+
+  // Ensure we have an array of layers
+  if (!Array.isArray(exampleLayers)) {
+    console.warn('mapLayers computed - exampleLayers is not an array:', exampleLayers)
+    return [...baseLayers]
+  }
 
   // Check if example already includes OSM base layer
   const hasOSMInExample = exampleLayers.some(
     (layer) =>
-      layer.source?.type === 'OSM' || (layer.type === 'Tile' && layer.source?.type === 'OSM'),
+      layer?.source?.type === 'OSM' || (layer?.type === 'Tile' && layer?.source?.type === 'OSM'),
   )
 
   // Only add base layers if example doesn't already include them
@@ -69,20 +75,9 @@ const mapLayers = computed(() => {
 const convertStyleForEoxMap = (style) => {
   if (!style) return undefined
 
-  // If it's already a simple style object that might work with eox-map, keep it
-  // For complex custom styles, we might need to remove them and let eox-map handle defaults
-  try {
-    // Check if it looks like a complex custom style format
-    if (style.legend || style.rules || Array.isArray(style)) {
-      return undefined // Let eox-map use default styling
-    }
-
-    // For simple style objects, pass them through
-    return style
-  } catch (error) {
-    console.warn('Error processing style, using defaults:', error)
-    return undefined
-  }
+  // Keep it simple - just pass the style through
+  // Let eox-map handle any parsing errors gracefully
+  return style
 }
 
 // Sanitize layer to ensure it has all required properties for eox-map
@@ -108,13 +103,20 @@ const sanitizeLayer = (layer) => {
     // or could be: 'FlatGeobuf', 'vector', etc.
   }
 
-  // Handle style conversion
-  const convertedStyle = convertStyleForEoxMap(sanitized.style)
-  if (convertedStyle) {
-    sanitized.style = convertedStyle
-  } else {
-    // Remove style if it can't be converted - let eox-map use defaults
+  // Handle style - ONLY for Vector layers
+  if (sanitized.type === 'Vector' && sanitized.style) {
+    // For Vector layers, put style in both places
+    sanitized.properties.layerConfig = {
+      ...sanitized.properties.layerConfig,
+      style: sanitized.style
+    }
+    // Keep sanitized.style as is for Vector layers
+  } else if (sanitized.type !== 'Vector') {
+    // Remove style from non-Vector layers
     delete sanitized.style
+    if (sanitized.properties?.layerConfig?.style) {
+      delete sanitized.properties.layerConfig.style
+    }
   }
 
   // Remove potentially problematic properties
@@ -122,10 +124,15 @@ const sanitizeLayer = (layer) => {
     delete sanitized.extent
   }
 
-  // Remove undefined values that might cause issues
+  // Remove undefined values that might cause issues, but preserve essential properties
   Object.keys(sanitized).forEach((key) => {
     if (sanitized[key] === undefined) {
-      delete sanitized[key]
+      // Don't delete essential properties that eox-map requires
+      if (!['id', 'type', 'source', 'properties'].includes(key)) {
+        delete sanitized[key]
+      } else {
+        console.warn(`Essential property '${key}' is undefined in layer:`, sanitized)
+      }
     }
   })
 
@@ -175,11 +182,17 @@ const updateMapLayers = async () => {
   if (mapRef.value) {
     const layers = mapLayers.value.map(sanitizeLayer)
 
+
     try {
+      
       mapRef.value.layers = layers
+      
     } catch (error) {
       console.error('Error setting layers on eox-map:', error)
+      console.error('Layer details:', layers.map(l => ({ id: l.id, type: l.type, hasStyle: !!l.style })))
     }
+  } else {
+    console.warn('MapView: mapRef.value is null/undefined in updateMapLayers')
   }
 }
 

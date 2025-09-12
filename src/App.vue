@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick, watch } from 'vue'
 
 import MapView from './components/MapView.vue'
 import LayerControl from './components/LayerControl.vue'
@@ -61,11 +61,23 @@ const stopResize = () => {
   }
 }
 
-onMounted(async () => {
+// Connect LayerControl to map whenever both are available
+const connectLayerControl = async () => {
   await nextTick()
-
   if (layerControlComponent.value?.layerControlRef && mapComponent.value?.mapRef) {
     layerControlComponent.value.layerControlRef.for = mapComponent.value.mapRef
+  }
+}
+
+onMounted(connectLayerControl)
+
+// Watch for LayerControl visibility changes and connect when it becomes visible
+watch(isLayerControlVisible, (isVisible) => {
+  if (isVisible) {
+    // Wait a tick for the component to be rendered
+    nextTick(() => {
+      connectLayerControl()
+    })
   }
 })
 </script>
@@ -73,7 +85,7 @@ onMounted(async () => {
 <template>
   <header></header>
 
-  <div v-if="isLayerControlVisible" id="layercontrol">
+  <div id="layercontrol" :style="{ display: isLayerControlVisible ? 'block' : 'none' }">
     <LayerControl ref="layerControlComponent" />
   </div>
 

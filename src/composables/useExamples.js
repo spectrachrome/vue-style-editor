@@ -6,6 +6,7 @@ const currentExample = ref(null)
 const currentExampleStyle = ref(null)
 const dataLayers = ref([])
 
+
 export function useExamples() {
   const setCurrentExample = async (example) => {
     currentExample.value = example
@@ -20,6 +21,16 @@ export function useExamples() {
         processedLayers.forEach((l) => {
           if (l.type === 'Vector') {
             l.style = currentExampleStyle.value
+            // Also set complete layerConfig for eox-map compatibility
+            if (!l.properties.layerConfig) {
+              l.properties.layerConfig = {}
+            }
+            l.properties.layerConfig = {
+              ...l.properties.layerConfig,
+              schema: currentExampleStyle.value.jsonform || currentExampleStyle.value.schema,
+              style: currentExampleStyle.value,
+              legend: currentExampleStyle.value.legend
+            }
           }
         })
 
@@ -38,6 +49,8 @@ export function useExamples() {
 
         dataLayers.value = [layer]
       }
+    } else {
+      dataLayers.value = []
     }
   }
 
@@ -61,13 +74,46 @@ export function useExamples() {
     // Re-process layers with the new style
     if (currentExample.value?.layers) {
       const processedLayers = await processLayers(currentExample.value.layers, newStyle)
+
+      processedLayers.forEach((l) => {
+        if (l.type === 'Vector') {
+          l.style = newStyle
+          // Also set complete layerConfig for eox-map compatibility
+          if (!l.properties.layerConfig) {
+            l.properties.layerConfig = {}
+          }
+          l.properties.layerConfig = {
+            ...l.properties.layerConfig,
+            schema: newStyle.jsonform || newStyle.schema,
+            style: newStyle,
+            legend: newStyle.legend
+          }
+          
+        }
+      })
+
       dataLayers.value = processedLayers
     } else if (currentExample.value) {
       // Update legacy layer style
-      const updatedLayers = dataLayers.value.map((layer) => ({
-        ...layer,
-        style: newStyle,
-      }))
+      const updatedLayers = dataLayers.value.map((layer) => {
+        const updatedLayer = {
+          ...layer,
+          style: newStyle,
+        }
+        // Also set complete layerConfig for eox-map compatibility
+        if (layer.type === 'Vector') {
+          if (!updatedLayer.properties.layerConfig) {
+            updatedLayer.properties.layerConfig = {}
+          }
+          updatedLayer.properties.layerConfig = {
+            ...updatedLayer.properties.layerConfig,
+            schema: newStyle.jsonform || newStyle.schema,
+            style: newStyle,
+            legend: newStyle.legend
+          }
+        }
+        return updatedLayer
+      })
       dataLayers.value = updatedLayers
     }
   }

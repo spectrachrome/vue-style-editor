@@ -107,8 +107,17 @@ export function generateMapLayer({ dataUrl, name, style, format, id, properties 
   // Add style configuration if provided
   if (style) {
     if (layerType === 'Vector') {
-      // For vector layers, apply style directly
-      Object.assign(layer, style)
+      // For vector layers, set both layer.style and complete layerConfig
+      layer.style = style
+      if (!layer.properties.layerConfig) {
+        layer.properties.layerConfig = {}
+      }
+      layer.properties.layerConfig = {
+        ...layer.properties.layerConfig,
+        schema: style?.jsonform || style?.schema,
+        style: style,
+        legend: style?.legend
+      }
     } else if (layerType === 'WebGLTile') {
       // For raster layers, style might be applied differently
       // This depends on EOX map's raster styling capabilities

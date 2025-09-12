@@ -66,6 +66,8 @@ const handleDirectAceChange = () => {
   try {
     const content = aceEditorInstance.getValue()
     const newStyle = JSON.parse(content)
+    
+    
     // Use debounced update to prevent excessive calls
     debouncedStyleUpdate(newStyle)
   } catch (error) {

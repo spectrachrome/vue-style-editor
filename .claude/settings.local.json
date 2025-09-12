@@ -11,7 +11,9 @@
       "Bash(npm ls:*)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:www.npmjs.com)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "WebFetch(domain:guide.cloudnativegeo.org)",
+      "Bash(sed:*)"
     ],
     "deny": [],
     "ask": []

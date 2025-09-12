@@ -95,11 +95,32 @@ export async function processLayers(layers, editorStyle = null) {
     const handler = getFormatHandler(layer.source?.type)
     let processedLayer = await handler.processLayer(layer)
 
+    // Ensure layer has proper ID structure
+    if (!processedLayer.id && processedLayer.properties?.id) {
+      processedLayer.id = processedLayer.properties.id
+    }
+    if (!processedLayer.id) {
+      processedLayer.id = `layer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    }
+
     // Override layer style with editor style if provided
     if (editorStyle) {
       processedLayer = {
         ...processedLayer,
         style: editorStyle
+      }
+      
+      // Also set complete layerConfig for eox-map compatibility
+      if (processedLayer.type === 'Vector') {
+        if (!processedLayer.properties.layerConfig) {
+          processedLayer.properties.layerConfig = {}
+        }
+        processedLayer.properties.layerConfig = {
+          ...processedLayer.properties.layerConfig,
+          schema: editorStyle.jsonform || editorStyle.schema,
+          style: editorStyle,
+          legend: editorStyle.legend
+        }
       }
     }
 
