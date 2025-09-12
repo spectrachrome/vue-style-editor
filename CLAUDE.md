@@ -185,3 +185,40 @@ Recommended VS Code extensions (see `.vscode/extensions.json`):
 - EditorConfig
 
 Auto-formatting and ESLint fixes on save are enabled by default.
+
+## Git Commit Guidelines
+
+When creating git commits, follow these conventions:
+
+### Commit Message Format
+- **Main semantic commit line**: Use lowercase only (e.g., `feat: add new feature`, `fix: resolve styling issue`)
+- **Structure**: `<type>: <description>` where type is lowercase (feat, fix, docs, style, refactor, test, chore)
+
+### Changelog Format
+Use [Keep a Changelog](https://keepachangelog.com/) format for detailing changes in commits:
+
+```
+- **Added** - for new features
+- **Changed** - for changes in existing functionality  
+- **Deprecated** - for soon-to-be removed features
+- **Removed** - for now removed features
+- **Fixed** - for any bug fixes
+- **Security** - in case of vulnerabilities
+```
+
+### Example Commit Message
+```
+fix: resolve layer styling persistence during editing
+
+**Fixed:**
+- Layer colors now persist when editing styles in code editor
+- Variable preprocessing correctly replaces ["var", "key"] expressions
+- Style updates maintain proper eox-map layer configuration
+
+**Added:**
+- updateVectorLayerStyle function for processing style variables
+- Variable preprocessing in formatRegistry and useExamples composables
+
+**Changed:**
+- Layer styling pipeline now processes variables before applying to map
+```
