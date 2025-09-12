@@ -1,7 +1,7 @@
 <template>
   <div ref="containerRef" class="code-editor-container">
-    <eox-jsonform 
-      :schema="editorSchema" 
+    <eox-jsonform
+      :schema="editorSchema"
       :value="formValue"
     ></eox-jsonform>
   </div>
@@ -38,7 +38,7 @@ const debouncedStyleUpdate = debounce((newStyle) => {
 const setupAceEditor = async () => {
   // Wait for eox-jsonform to be fully initialized
   await nextTick()
-  
+
   // Small delay to ensure the ACE editor is ready
   setTimeout(() => {
     try {
@@ -48,11 +48,9 @@ const setupAceEditor = async () => {
 
       if (aceEditor) {
         aceEditorInstance = aceEditor
-        
+
         // Add direct change listener with debouncing
         aceEditor.on('change', handleDirectAceChange)
-        
-        console.log('Direct ACE editor access established with 650ms debouncing')
       } else {
         console.warn('Could not access ACE editor instance')
       }
@@ -64,7 +62,7 @@ const setupAceEditor = async () => {
 
 const handleDirectAceChange = () => {
   if (!aceEditorInstance) return
-  
+
   try {
     const content = aceEditorInstance.getValue()
     const newStyle = JSON.parse(content)
@@ -134,7 +132,7 @@ onUnmounted(() => {
   if (resizeObserver) {
     resizeObserver.disconnect()
   }
-  
+
   // Cleanup ACE editor
   cleanupAceEditor()
 })

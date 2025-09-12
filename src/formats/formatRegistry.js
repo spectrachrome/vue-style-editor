@@ -29,19 +29,18 @@ const FormatHandler = {
 const FlatGeoBufHandler = Object.create(FormatHandler)
 FlatGeoBufHandler.supports = (sourceType) => sourceType === 'FlatGeoBuf' || sourceType === 'flatgeobuf'
 FlatGeoBufHandler.processLayer = async function (layer) {
-  console.log('FlatGeoBuf handler processing layer:', layer.properties?.title || 'Unnamed FGB Layer')
   const processedLayer = { ...layer }
 
   if (layer.source?.url) {
     try {
       const extent = await getFgbExtent(layer.source.url)
+
       if (extent) {
         processedLayer.extent = extent
-        console.log('FGB extent successfully calculated for:', layer.properties?.title || 'layer')
         // Add a visible marker that we can check
-        processedLayer.properties = { 
-          ...processedLayer.properties, 
-          __extentCalculated: true 
+        processedLayer.properties = {
+          ...processedLayer.properties,
+          __extentCalculated: true
         }
       } else {
         console.warn('FGB extent calculation returned undefined for:', layer.source.url)
@@ -95,7 +94,7 @@ export async function processLayers(layers, editorStyle = null) {
   for (const layer of layers) {
     const handler = getFormatHandler(layer.source?.type)
     let processedLayer = await handler.processLayer(layer)
-    
+
     // Override layer style with editor style if provided
     if (editorStyle) {
       processedLayer = {
@@ -103,9 +102,8 @@ export async function processLayers(layers, editorStyle = null) {
         style: editorStyle
       }
     }
-    
+
     processedLayers.push(processedLayer)
   }
-  console.log('Format registry processed', processedLayers.length, 'layers with', editorStyle ? 'editor style override' : 'original styles')
   return processedLayers
 }

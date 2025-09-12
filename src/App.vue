@@ -65,7 +65,6 @@ onMounted(async () => {
   await nextTick()
 
   if (layerControlComponent.value?.layerControlRef && mapComponent.value?.mapRef) {
-    console.log('Connecting layer control to map:', mapComponent.value.mapRef)
     layerControlComponent.value.layerControlRef.for = mapComponent.value.mapRef
   }
 })

@@ -1,11 +1,12 @@
 <!-- MapView component for the main map display -->
 <template>
-  <eox-map ref="mapRef" :center="[15, 48]" :zoom="7"> </eox-map>
+  <eox-map ref="mapRef" :center="mapCenter" :zoom="mapZoom"> </eox-map>
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useExamples } from '../composables/useExamples.js'
+import proj4 from 'proj4'
 
 const mapRef = ref(null)
 const { dataLayers } = useExamples()
@@ -24,6 +25,31 @@ const baseLayers = [
   },
 ]
 
+// Calculate map center and zoom from layer extents
+const mapViewParams = computed(() => {
+  const exampleLayers = dataLayers.value
+
+  // Look for layers with calculated extents
+  const layersWithExtent = exampleLayers.filter(layer =>
+    layer.extent && Array.isArray(layer.extent) && layer.extent.length === 4
+  )
+
+  if (layersWithExtent.length > 0) {
+    // Use the first layer with an extent to set the map view
+    const extent = layersWithExtent[0].extent
+    const center = calculateCenterFromExtent(extent)
+    const zoom = calculateZoomFromExtent(extent)
+
+    return { center, zoom }
+  }
+
+  // Default view for when no extent is available
+  return { center: [15, 48], zoom: 7 }
+})
+
+const mapCenter = computed(() => mapViewParams.value.center)
+const mapZoom = computed(() => mapViewParams.value.zoom)
+
 const mapLayers = computed(() => {
   const exampleLayers = dataLayers.value
 
@@ -35,13 +61,6 @@ const mapLayers = computed(() => {
 
   // Only add base layers if example doesn't already include them
   const layers = hasOSMInExample ? [...exampleLayers] : [...baseLayers, ...exampleLayers]
-
-  console.log(
-    'MapView updated with',
-    layers.length,
-    'layers',
-    hasOSMInExample ? '(example includes base layers)' : '(added base layers)',
-  )
 
   return layers
 })
@@ -55,7 +74,6 @@ const convertStyleForEoxMap = (style) => {
   try {
     // Check if it looks like a complex custom style format
     if (style.legend || style.rules || Array.isArray(style)) {
-      console.log('Complex custom style detected, letting eox-map handle styling')
       return undefined // Let eox-map use default styling
     }
 
@@ -86,7 +104,6 @@ const sanitizeLayer = (layer) => {
 
   // Fix FlatGeoBuf source type naming
   if (sanitized.source?.type === 'FlatGeoBuf') {
-    console.log('Converting FlatGeoBuf source type name')
     sanitized.source.type = 'FlatGeoBuf'
     // or could be: 'FlatGeobuf', 'vector', etc.
   }
@@ -98,7 +115,6 @@ const sanitizeLayer = (layer) => {
   } else {
     // Remove style if it can't be converted - let eox-map use defaults
     delete sanitized.style
-    console.log('Removed incompatible style from layer:', sanitized.properties?.title)
   }
 
   // Remove potentially problematic properties
@@ -116,45 +132,77 @@ const sanitizeLayer = (layer) => {
   return sanitized
 }
 
+// Helper function to calculate center from extent (in EPSG:3857)
+function calculateCenterFromExtent(extent) {
+  const [minX, minY, maxX, maxY] = extent
+  const centerX = (minX + maxX) / 2
+  const centerY = (minY + maxY) / 2
+
+  // Convert from EPSG:3857 back to EPSG:4326 for the map
+  const [lon, lat] = proj4('EPSG:3857', 'EPSG:4326', [centerX, centerY])
+  return [lon, lat]
+}
+
+// Helper function to calculate appropriate zoom level from extent
+function calculateZoomFromExtent(extent) {
+  const [minX, minY, maxX, maxY] = extent
+  const width = maxX - minX
+  const height = maxY - minY
+
+  // Simple heuristic for zoom level based on extent size
+  // These values are rough approximations for EPSG:3857
+  const maxDimension = Math.max(width, height)
+
+  if (maxDimension > 20000000) return 2  // World view
+  if (maxDimension > 10000000) return 3  // Continental
+  if (maxDimension > 5000000) return 4   // Large country
+  if (maxDimension > 2000000) return 5   // Country
+  if (maxDimension > 1000000) return 6   // Large region
+  if (maxDimension > 500000) return 7    // Region
+  if (maxDimension > 200000) return 8    // Large city
+  if (maxDimension > 100000) return 9    // City
+  if (maxDimension > 50000) return 10    // Town
+  if (maxDimension > 20000) return 11    // District
+  if (maxDimension > 10000) return 12    // Neighborhood
+  if (maxDimension > 5000) return 13     // Small area
+  if (maxDimension > 2000) return 14     // Very small area
+  return 15  // Maximum detail
+}
+
 // Set layers property directly on the web component
 const updateMapLayers = async () => {
   await nextTick()
   if (mapRef.value) {
     const layers = mapLayers.value.map(sanitizeLayer)
-    console.log('About to set', layers.length, 'sanitized layers on eox-map')
 
     try {
-      console.log('eox-map instance:', mapRef.value)
-      console.log('Layers to set:', layers)
-
-      // Check what source types are supported
-      if (mapRef.value.constructor && mapRef.value.constructor.supportedSourceTypes) {
-        console.log('Supported source types:', mapRef.value.constructor.supportedSourceTypes)
-      }
-
       mapRef.value.layers = layers
-      console.log('Successfully set layers on eox-map')
     } catch (error) {
       console.error('Error setting layers on eox-map:', error)
-      console.error('Error details:', error.message)
-      console.log('Layer structures that failed:')
-      layers.forEach((layer, index) => {
-        console.log(`Layer ${index}:`, layer)
-        if (layer.source) {
-          console.log(`  Source type: ${layer.source.type}`)
-          console.log(`  Source:`, layer.source)
-        }
-      })
     }
+  }
+}
+
+// Update map view when extent changes
+const updateMapView = async () => {
+  await nextTick()
+  if (mapRef.value) {
+    const { center, zoom } = mapViewParams.value
+
+    // Update map center and zoom
+    mapRef.value.center = center
+    mapRef.value.zoom = zoom
   }
 }
 
 // Watch for changes and update the map
 watch(mapLayers, updateMapLayers, { immediate: false })
+watch(mapViewParams, updateMapView, { immediate: false })
 
 // Initialize layers after mount
 onMounted(() => {
   updateMapLayers()
+  updateMapView()
 })
 
 defineExpose({ mapRef })

@@ -2,19 +2,9 @@ import { deserialize } from 'flatgeobuf/lib/mjs/geojson.js'
 import proj4 from 'proj4'
 
 async function getFgbExtent(url) {
-  console.log('Calculating FGB extent for:', url)
-  
   const response = await fetch(url)
-  if (!response.ok) {
-    throw new Error(`Failed to fetch FGB data: ${response.status} ${response.statusText}`)
-  }
-  
   const buffer = await response.arrayBuffer()
-  if (buffer.byteLength === 0) {
-    console.warn('FGB file is empty:', url)
-    return undefined
-  }
-  
+
   let minX = Infinity
   let minY = Infinity
   let maxX = -Infinity
@@ -39,48 +29,37 @@ async function getFgbExtent(url) {
     }
   }
 
-  // FlatGeoBuf deserialize returns an iterable/generator
-  // Convert to array to ensure proper iteration
+  // FlatGeoBuf v4.x returns an AsyncGenerator - iterate through it
+  const asyncIterable = deserialize(new Uint8Array(buffer))
+
+  let featureCount = 0
+
   try {
-    const featuresIterator = deserialize(new Uint8Array(buffer))
-    
-    if (!featuresIterator) {
-      console.warn('FGB deserialization returned null/undefined')
-      return undefined
-    }
-    
-    // Convert iterator to array to avoid iteration issues
-    console.log('Converting FGB iterator to array...')
-    const features = Array.from(featuresIterator)
-    console.log(`FGB deserialization result: ${features.length} features`)
-    
-    if (features.length === 0) {
-      console.warn('No features found in FGB data - file might be empty or corrupted')
-      // Still return undefined but don't treat this as a fatal error
-      return undefined
-    }
-    
-    // Process the features
-    for (const feature of features) {
+    for await (const feature of asyncIterable) {
+      featureCount++
+
       const geometry = feature.geometry
       if (!geometry || !geometry.coordinates) continue
+
       traverseCoordinates(geometry.coordinates)
     }
-    
-    console.log('Processed', features.length, 'FGB features for extent calculation')
-    
+
   } catch (error) {
-    console.error('Error processing FGB data:', error)
+    console.error('Error iterating through features:', error)
+    return undefined
+  }
+
+  if (featureCount === 0) {
+    console.warn('No features found')
     return undefined
   }
 
   if (minX === Infinity) {
-    console.warn('No valid coordinates found in FGB data')
+    console.warn('No valid coordinates found')
     return undefined
   }
-  
+
   const extent = [minX, minY, maxX, maxY]
-  console.log('Calculated FGB extent:', extent)
   return extent
 }
 

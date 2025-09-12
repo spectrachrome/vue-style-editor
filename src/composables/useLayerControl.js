@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 
 // Global state for layer control visibility
-const isLayerControlVisible = ref(true)
+const isLayerControlVisible = ref(false)
 
 export function useLayerControl() {
   const toggleLayerControl = () => {
@@ -10,6 +10,6 @@ export function useLayerControl() {
 
   return {
     isLayerControlVisible,
-    toggleLayerControl
+    toggleLayerControl,
   }
 }

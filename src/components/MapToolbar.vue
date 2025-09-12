@@ -39,10 +39,7 @@ const dropdownButtonRef = ref(null)
 const { setCurrentExample } = useExamples()
 
 const toggleDropdown = () => {
-  console.log('Toggle dropdown clicked, current state:', isDropdownOpen.value)
   isDropdownOpen.value = !isDropdownOpen.value
-  console.log('New state:', isDropdownOpen.value)
-  console.log('Examples available:', examples)
 }
 
 const dropdownPosition = computed(() => {
@@ -60,7 +57,6 @@ const dropdownPosition = computed(() => {
 })
 
 const selectExample = (example) => {
-  console.log('Selected example:', example)
   isDropdownOpen.value = false
   setCurrentExample(example)
 }

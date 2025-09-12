@@ -14,14 +14,19 @@ export function useExamples() {
 
     if (example) {
       if (example.layers) {
-        console.log('Using new layer definitions from example:', example.name)
         // Use the new layer definitions with format registry, applying editor style
         const processedLayers = await processLayers(example.layers, currentExampleStyle.value)
+
+        processedLayers.forEach((l) => {
+          if (l.type === 'Vector') {
+            l.style = currentExampleStyle.value
+          }
+        })
+
         dataLayers.value = processedLayers
       } else {
         // Fallback to legacy approach
         const format = detectDataFormat(example.dataUrl)
-        console.log('Detected format for', example.dataUrl, ':', format)
 
         const layer = generateMapLayer({
           dataUrl: example.dataUrl,
@@ -52,16 +57,16 @@ export function useExamples() {
 
   const updateCurrentStyle = async (newStyle) => {
     currentExampleStyle.value = newStyle
-    
+
     // Re-process layers with the new style
     if (currentExample.value?.layers) {
       const processedLayers = await processLayers(currentExample.value.layers, newStyle)
       dataLayers.value = processedLayers
     } else if (currentExample.value) {
       // Update legacy layer style
-      const updatedLayers = dataLayers.value.map(layer => ({
+      const updatedLayers = dataLayers.value.map((layer) => ({
         ...layer,
-        style: newStyle
+        style: newStyle,
       }))
       dataLayers.value = updatedLayers
     }

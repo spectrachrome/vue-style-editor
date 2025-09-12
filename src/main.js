@@ -8,7 +8,7 @@ try {
   // Import FlatGeoBuf if available
   import('flatgeobuf/lib/mjs/ol')
     .then(() => {
-      console.log('FlatGeoBuf OpenLayers integration loaded')
+      // FlatGeoBuf OpenLayers integration loaded successfully
     })
     .catch((error) => {
       console.warn('Could not load FlatGeoBuf OpenLayers integration:', error)
