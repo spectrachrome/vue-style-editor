@@ -77,15 +77,14 @@ const setupAceEditor = async () => {
 
           // Find and fold nested JSON objects (skip root level)
           const lines = session.getLength()
-          let rootLevel = true
           let braceDepth = 0
 
           for (let i = 0; i < lines; i++) {
             const line = session.getLine(i).trim()
 
             // Track brace depth to identify nesting level
-            const openBraces = (line.match(/[\{\[]/g) || []).length
-            const closeBraces = (line.match(/[\}\]]/g) || []).length
+            const openBraces = (line.match(/[{[]/g) || []).length
+            const closeBraces = (line.match(/[}\]]/g) || []).length
             braceDepth += openBraces - closeBraces
 
             // Skip the very first opening brace (root level)
@@ -94,7 +93,7 @@ const setupAceEditor = async () => {
             }
 
             // Fold objects/arrays that are nested (not at root level)
-            if (line.match(/^"[^"]+"\s*:\s*[\{\[]/) && braceDepth > 1) {
+            if (line.match(/^"[^"]+"\s*:\s*[{[]/) && braceDepth > 1) {
               const foldRange = session.getFoldWidgetRange(i)
               if (foldRange && foldRange.end.row > i + 1) {
                 session.addFold('...', foldRange)

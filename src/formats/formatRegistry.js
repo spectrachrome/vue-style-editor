@@ -32,7 +32,14 @@ FlatGeoBufHandler.supports = (sourceType) => sourceType === 'FlatGeoBuf' || sour
 FlatGeoBufHandler.processLayer = async function (layer) {
   const processedLayer = { ...layer }
 
-  if (layer.source?.url) {
+  // Skip extent calculation if layer already has an extent
+  if (layer.extent && Array.isArray(layer.extent) && layer.extent.length === 4) {
+    processedLayer.extent = layer.extent
+    processedLayer.properties = {
+      ...processedLayer.properties,
+      __extentCalculated: true
+    }
+  } else if (layer.source?.url) {
     try {
       const extent = await getFgbExtent(layer.source.url)
 

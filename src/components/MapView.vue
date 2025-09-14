@@ -1,7 +1,7 @@
 <!-- MapView component for the main map display -->
 <template>
   <div class="map-container">
-    <eox-map ref="mapRef" :center="mapCenter" :zoom="mapZoom"> </eox-map>
+    <eox-map ref="mapRef"> </eox-map>
 
     <!-- Loading overlay - ONLY an overlay, never removes the map DOM -->
     <div v-if="isMapLoading" class="map-loading-overlay">
@@ -22,6 +22,8 @@ import proj4 from 'proj4'
 const mapRef = ref(null)
 const { dataLayers } = useExamples()
 const { isMapLoading, loadingHint } = useLoading()
+const shouldPreserveView = ref(false)
+const hasInitializedView = ref(false)
 
 const baseLayers = [
   {
@@ -59,8 +61,7 @@ const mapViewParams = computed(() => {
   return { center: [15, 48], zoom: 7 }
 })
 
-const mapCenter = computed(() => mapViewParams.value.center)
-const mapZoom = computed(() => mapViewParams.value.zoom)
+// Removed computed bindings - we'll set center/zoom directly on the map
 
 const mapLayers = computed(() => {
   const exampleLayers = dataLayers.value || []
@@ -83,14 +84,6 @@ const mapLayers = computed(() => {
   return layers
 })
 
-// Convert custom style to eox-map compatible format
-const convertStyleForEoxMap = (style) => {
-  if (!style) return undefined
-
-  // Keep it simple - just pass the style through
-  // Let eox-map handle any parsing errors gracefully
-  return style
-}
 
 // Sanitize layer to ensure it has all required properties for eox-map
 const sanitizeLayer = (layer) => {
@@ -210,30 +203,105 @@ const updateMapLayers = async () => {
 
 // Update map view when extent changes
 const updateMapView = async () => {
-  await nextTick()
-  if (mapRef.value) {
-    const { center, zoom } = mapViewParams.value
+  // Skip view update if we're preserving the view or if we haven't initialized
+  if (shouldPreserveView.value) {
+    shouldPreserveView.value = false
+    return
+  }
 
-    // Update map center and zoom
-    mapRef.value.center = center
-    mapRef.value.zoom = zoom
+  // Only update view for initial load or when data actually changes
+  if (!hasInitializedView.value || !shouldPreserveView.value) {
+    await nextTick()
+    if (mapRef.value) {
+      const { center, zoom } = mapViewParams.value
+
+      // Update map center and zoom
+      mapRef.value.center = center
+      mapRef.value.zoom = zoom
+      hasInitializedView.value = true
+    }
   }
 }
 
-// Watch for changes and update the map
-watch(mapLayers, updateMapLayers, { immediate: false })
+
+
+// Track last layer data to detect style-only changes
+let lastLayerData = null
+
+// Watch for layer changes and preserve view during style updates
+watch(mapLayers, async (newLayers) => {
+  // Capture current view before any updates
+  let capturedView = null
+  if (mapRef.value && lastLayerData) {
+    // Check if this is a style-only update by comparing non-style properties
+    const stripStyle = (layers) => layers.map(l => ({
+      id: l.id,
+      type: l.type,
+      source: l.source,
+      extent: l.extent
+    }))
+
+    const newStripped = JSON.stringify(stripStyle(newLayers))
+    const lastStripped = JSON.stringify(stripStyle(lastLayerData))
+
+    if (newStripped === lastStripped) {
+      // Style-only update - capture current view and prevent auto-recentering
+      // Get the actual current view from the OpenLayers map instance
+      const olMap = mapRef.value?.map
+      if (olMap) {
+        const view = olMap.getView()
+        const currentCenter = view.getCenter()
+        const currentZoom = view.getZoom()
+
+        // Convert from EPSG:3857 to EPSG:4326 for center
+        const [lon, lat] = proj4('EPSG:3857', 'EPSG:4326', currentCenter)
+
+        shouldPreserveView.value = true
+        capturedView = {
+          center: [lon, lat],
+          zoom: currentZoom
+        }
+      }
+    }
+  }
+
+  // Update layers
+  await updateMapLayers()
+
+  // Restore view if this was a style-only update
+  if (capturedView && mapRef.value) {
+    // Use nextTick instead of setTimeout for more reliable timing
+    await nextTick()
+    if (mapRef.value) {
+      mapRef.value.center = capturedView.center
+      mapRef.value.zoom = capturedView.zoom
+    }
+  }
+
+  // Update tracking data
+  lastLayerData = JSON.parse(JSON.stringify(newLayers))
+}, { immediate: false })
+
 watch(mapViewParams, updateMapView, { immediate: false })
 
 // Initialize layers after mount
-onMounted(() => {
-  updateMapLayers()
-  updateMapView()
+onMounted(async () => {
+  await updateMapLayers()
+  // Set initial view
+  if (mapRef.value) {
+    const { center, zoom } = mapViewParams.value
+    mapRef.value.center = center
+    mapRef.value.zoom = zoom
+    hasInitializedView.value = true
+  }
 })
 
 defineExpose({ mapRef })
 </script>
 
 <style scoped>
+@import url('@eox/ui/style.css');
+
 .map-container {
   position: relative;
   width: 100%;

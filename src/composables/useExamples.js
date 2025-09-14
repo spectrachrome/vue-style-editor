@@ -81,13 +81,14 @@ export function useExamples() {
   }
 
   const updateCurrentStyle = async (newStyle) => {
-    startMapLoading()
-
+    // Don't show loading indicator for style-only updates
     currentExampleStyle.value = newStyle
 
     // Re-process layers with the new style
     if (currentExample.value?.layers) {
-      const processedLayers = await processLayers(currentExample.value.layers, newStyle)
+      // Use current dataLayers which have calculated extents, not original example layers
+      const layersWithExtents = dataLayers.value.length > 0 ? dataLayers.value : currentExample.value.layers
+      const processedLayers = await processLayers(layersWithExtents, newStyle)
 
       processedLayers.forEach((l) => {
         if (l.type === 'Vector') {
@@ -133,11 +134,6 @@ export function useExamples() {
       })
       dataLayers.value = updatedLayers
     }
-
-    // Stop loading after style update completes
-    setTimeout(() => {
-      stopMapLoading()
-    }, 800)
   }
 
   const clearCurrentExample = () => {
