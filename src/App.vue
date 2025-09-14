@@ -85,7 +85,7 @@ watch(isLayerControlVisible, (isVisible) => {
 <template>
   <header></header>
 
-  <div id="layercontrol" :style="{ display: isLayerControlVisible ? 'block' : 'none' }">
+  <div id="layercontrol" class="card" :style="{ display: isLayerControlVisible ? 'block' : 'none' }">
     <LayerControl ref="layerControlComponent" />
   </div>
 
@@ -127,16 +127,47 @@ watch(isLayerControlVisible, (isVisible) => {
   position: fixed;
   right: 60px;
   top: 70px;
-  background: #fff;
-  width: 240px;
+  width: 300px;
   height: 400px;
   z-index: 2000;
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  overflow: hidden; /* Ensure content respects border-radius */
+  overflow-y: auto; /* Allow vertical scrolling for content */
+
+  /* Light theme */
+  background: rgba(var(--eox-theme-light-surface-container), 0.9);
+  color: rgb(var(--eox-theme-light-on-surface));
+  border: 1px solid rgba(var(--eox-theme-light-outline-variant), 0.3);
+
+  /* Set CSS variables for internal components */
+  --surface: var(--eox-theme-light-surface);
+  --on-surface: var(--eox-theme-light-on-surface);
+  --surface-container: var(--eox-theme-light-surface-container);
+  --on-surface-container: var(--eox-theme-light-on-surface);
+  --primary: var(--eox-theme-light-primary);
+  --on-primary: var(--eox-theme-light-on-primary);
+  --outline: var(--eox-theme-light-outline);
+  --outline-variant: var(--eox-theme-light-outline-variant);
 }
 
 @media (prefers-color-scheme: dark) {
   #layercontrol {
-    background: #2d2d2d;
-    color: #fff;
+    /* Dark theme */
+    background: rgba(var(--eox-theme-dark-surface-container), 0.9);
+    color: rgb(var(--eox-theme-dark-on-surface));
+    border: 1px solid rgba(var(--eox-theme-dark-outline-variant), 0.3);
+
+    /* Set CSS variables for internal components */
+    --surface: var(--eox-theme-dark-surface);
+    --on-surface: var(--eox-theme-dark-on-surface);
+    --surface-container: var(--eox-theme-dark-surface-container);
+    --on-surface-container: var(--eox-theme-dark-on-surface);
+    --primary: var(--eox-theme-dark-primary);
+    --on-primary: var(--eox-theme-dark-on-primary);
+    --outline: var(--eox-theme-dark-outline);
+    --outline-variant: var(--eox-theme-dark-outline-variant);
   }
 }
 
