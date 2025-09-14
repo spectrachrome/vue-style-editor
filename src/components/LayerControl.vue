@@ -9,6 +9,7 @@
 </template>
 
 <script setup>
+import 'color-legend-element'
 import { ref } from 'vue'
 
 const layerControlRef = ref(null)
