@@ -135,6 +135,7 @@ watch(isLayerControlVisible, (isVisible) => {
   -webkit-backdrop-filter: blur(10px);
   overflow: hidden; /* Ensure content respects border-radius */
   overflow-y: auto; /* Allow vertical scrolling for content */
+  padding: 8px 6px 16px 6px; /* Give the content some breathing room, extra bottom for scrolling */
 
   /* Light theme */
   background: rgba(var(--eox-theme-light-surface-container), 0.9);
