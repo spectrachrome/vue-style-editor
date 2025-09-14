@@ -1,7 +1,11 @@
 <!-- MapView component for the main map display -->
 <template>
   <div class="map-container">
-    <eox-map ref="mapRef"> </eox-map>
+    <eox-map ref="mapRef">
+      <eox-map-tooltip
+        :propertyTransform="tooltipPropertyTransform"
+      ></eox-map-tooltip>
+    </eox-map>
 
     <!-- Loading overlay - ONLY an overlay, never removes the map DOM -->
     <div v-if="isMapLoading" class="map-loading-overlay">
@@ -20,10 +24,58 @@ import { useLoading } from '../composables/useLoading.js'
 import proj4 from 'proj4'
 
 const mapRef = ref(null)
-const { dataLayers } = useExamples()
+const { dataLayers, currentExampleStyle } = useExamples()
 const { isMapLoading, loadingHint } = useLoading()
 const shouldPreserveView = ref(false)
 const hasInitializedView = ref(false)
+
+// Tooltip configuration
+const tooltipEnabled = computed(() => {
+  return currentExampleStyle.value?.tooltip !== undefined
+})
+
+// Tooltip property transform function
+const tooltipPropertyTransform = (param) => {
+  // If no tooltip config in style, return param as-is for default behavior
+  if (!currentExampleStyle.value?.tooltip) {
+    return param
+  }
+
+  const tooltipConfig = currentExampleStyle.value.tooltip
+
+  // If tooltip is an array of configurations (like in old code)
+  if (Array.isArray(tooltipConfig)) {
+    const tooltipProp = tooltipConfig.find((p) => p.id === param.key)
+    if (!tooltipProp) return null
+
+    // Format the value
+    let value = param.value
+    if (typeof value === 'object') {
+      value = JSON.stringify(value)
+    } else if (typeof value === 'number') {
+      value = value.toFixed(4)
+    }
+
+    return {
+      key: tooltipProp.title || param.key,
+      value: `${value} ${tooltipProp.appendix || ''}`.trim()
+    }
+  }
+
+  // If tooltip is a simple object or boolean
+  if (typeof tooltipConfig === 'object') {
+    // Support for simple key-value mapping
+    if (tooltipConfig[param.key]) {
+      return {
+        key: tooltipConfig[param.key].title || param.key,
+        value: param.value
+      }
+    }
+  }
+
+  // Default behavior - show all properties
+  return param
+}
 
 const baseLayers = [
   {
@@ -121,6 +173,30 @@ const sanitizeLayer = (layer) => {
     delete sanitized.style
     if (sanitized.properties?.layerConfig?.style) {
       delete sanitized.properties.layerConfig.style
+    }
+  }
+
+  // Handle tooltip interactions based on style configuration
+  if (sanitized.type === 'Vector') {
+    // Always start with a clean interactions array for tooltips
+    if (!sanitized.interactions) {
+      sanitized.interactions = []
+    }
+
+    // Remove any existing tooltip interactions
+    sanitized.interactions = sanitized.interactions.filter(
+      interaction => !(interaction.type === 'select' && interaction.options?.condition === 'pointermove')
+    )
+
+    // Only add hover interaction if tooltip is configured in style
+    if (currentExampleStyle.value?.tooltip) {
+      sanitized.interactions.push({
+        type: 'select',
+        options: {
+          condition: 'pointermove',
+          tooltip: true
+        }
+      })
     }
   }
 
