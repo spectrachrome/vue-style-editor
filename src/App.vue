@@ -188,6 +188,22 @@ aside {
     background: #1e1e1e;
     color: #fff;
   }
+
+  .resize-handle {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .resize-handle::before {
+    background: #666;
+  }
+
+  .resize-handle:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .resize-handle:hover::before {
+    background: #888;
+  }
 }
 
 .resize-handle {
@@ -195,15 +211,30 @@ aside {
   top: 0;
   right: 0;
   bottom: 0;
-  width: 4px;
-  background: #e0e0e0;
+  width: 12px;
+  background: rgba(0, 0, 0, 0.05);
   cursor: col-resize;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
   z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.resize-handle::before {
+  content: '';
+  width: 3px;
+  height: 80px;
+  background: #999;
+  border-radius: 2px;
 }
 
 .resize-handle:hover {
-  background: #bdbdbd;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.resize-handle:hover::before {
+  background: #777;
 }
 
 .flex-grow {
