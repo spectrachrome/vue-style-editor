@@ -12,7 +12,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { debounce } from 'lodash'
 import { useExamples } from '../composables/useExamples.js'
 
@@ -20,9 +20,11 @@ const isDarkMode = ref(false)
 const containerRef = ref(null)
 const containerHeight = ref(0)
 const isLoading = ref(true)
+const activeFolds = ref(new Set())
 let mediaQuery = null
 let resizeObserver = null
 let aceEditorInstance = null
+let isUpdatingFromExternal = false
 const { currentExampleStyle, updateCurrentStyle } = useExamples()
 
 const updateDarkMode = (e) => {
@@ -40,6 +42,87 @@ const debouncedStyleUpdate = debounce((newStyle) => {
   updateCurrentStyle(newStyle)
 }, 650)
 
+const collapseAllExcept = (exemptRange) => {
+  if (!aceEditorInstance) return
+
+  const session = aceEditorInstance.getSession()
+  const allFolds = session.getAllFolds()
+
+  allFolds.forEach((fold) => {
+    const foldKey = `${fold.start.row}-${fold.end.row}`
+    if (exemptRange && exemptRange === foldKey) {
+      return
+    }
+
+    if (activeFolds.value.has(foldKey)) {
+      activeFolds.value.delete(foldKey)
+    }
+  })
+
+  session.unfold()
+
+  setTimeout(() => {
+    initializeDefaultFolds()
+    if (exemptRange) {
+      const [startRow] = exemptRange.split('-').map(Number)
+      const range = session.getFoldWidgetRange(startRow)
+      if (range) {
+        session.removeFold(session.getFoldAt(startRow))
+        activeFolds.value.add(exemptRange)
+      }
+    }
+  }, 10)
+}
+
+const initializeDefaultFolds = () => {
+  if (!aceEditorInstance) return
+
+  const session = aceEditorInstance.getSession()
+  const lines = session.getLength()
+  let braceDepth = 0
+
+  for (let i = 0; i < lines; i++) {
+    const line = session.getLine(i).trim()
+
+    const openBraces = (line.match(/[{[]/g) || []).length
+    const closeBraces = (line.match(/[}\]]/g) || []).length
+    braceDepth += openBraces - closeBraces
+
+    if (i === 0 || (i === 1 && session.getLine(0).trim() === '')) {
+      continue
+    }
+
+    if (line.match(/^"[^"]+"\s*:\s*[{[]/) && braceDepth > 1) {
+      const foldRange = session.getFoldWidgetRange(i)
+      if (foldRange && foldRange.end.row > i + 1) {
+        const foldKey = `${foldRange.start.row}-${foldRange.end.row}`
+        if (!activeFolds.value.has(foldKey)) {
+          session.addFold('...', foldRange)
+        }
+      }
+    }
+  }
+}
+
+const handleFoldChange = () => {
+  if (!aceEditorInstance) return
+
+  const session = aceEditorInstance.getSession()
+  const allFolds = session.getAllFolds()
+  const currentFoldKeys = new Set(allFolds.map((fold) => `${fold.start.row}-${fold.end.row}`))
+
+  const previouslyActive = new Set(activeFolds.value)
+  const newlyExpanded = [...previouslyActive].filter((key) => !currentFoldKeys.has(key))
+
+  if (newlyExpanded.length > 0) {
+    const expandedKey = newlyExpanded[0]
+
+    setTimeout(() => {
+      collapseAllExcept(expandedKey)
+    }, 10)
+  }
+}
+
 const setupAceEditor = async () => {
   // Wait for eox-jsonform to be fully initialized
   await nextTick()
@@ -47,9 +130,10 @@ const setupAceEditor = async () => {
   // Small delay to ensure the ACE editor is ready
   setTimeout(() => {
     try {
-      const aceEditor = containerRef.value
-        ?.querySelector("eox-jsonform")
-        ?.editor?.editors?.["root.code"]?.["ace_editor_instance"]
+      const aceEditor =
+        containerRef.value?.querySelector('eox-jsonform')?.editor?.editors?.['root.code']?.[
+          'ace_editor_instance'
+        ]
 
       if (aceEditor) {
         aceEditorInstance = aceEditor
@@ -57,54 +141,23 @@ const setupAceEditor = async () => {
         // Add direct change listener with debouncing
         aceEditor.on('change', handleDirectAceChange)
 
-        // Hide loader immediately when ACE editor is ready
-        isLoading.value = false
+        // Add fold change listener for auto-collapse functionality
+        aceEditor.getSession().on('changeFold', handleFoldChange)
+
+        // Keep loader visible until folding is complete
 
         // Configure code folding and collapse JSON sections by default
         aceEditor.session.setFoldStyle('markbeginend')
         aceEditor.setOptions({
           foldStyle: 'markbeginend',
           enableBasicAutocompletion: true,
-          enableLiveAutocompletion: true
+          enableLiveAutocompletion: true,
         })
 
-        // Fold nested JSON objects/arrays but keep root level expanded
-        setTimeout(() => {
-          const session = aceEditor.getSession()
-
-          // Clear existing folds first
-          session.unfold()
-
-          // Find and fold nested JSON objects (skip root level)
-          const lines = session.getLength()
-          let braceDepth = 0
-
-          for (let i = 0; i < lines; i++) {
-            const line = session.getLine(i).trim()
-
-            // Track brace depth to identify nesting level
-            const openBraces = (line.match(/[{[]/g) || []).length
-            const closeBraces = (line.match(/[}\]]/g) || []).length
-            braceDepth += openBraces - closeBraces
-
-            // Skip the very first opening brace (root level)
-            if (i === 0 || (i === 1 && session.getLine(0).trim() === '')) {
-              continue
-            }
-
-            // Fold objects/arrays that are nested (not at root level)
-            if (line.match(/^"[^"]+"\s*:\s*[{[]/) && braceDepth > 1) {
-              const foldRange = session.getFoldWidgetRange(i)
-              if (foldRange && foldRange.end.row > i + 1) {
-                session.addFold('...', foldRange)
-              }
-            }
-          }
-
-          // Hide loader after folding is complete
-          isLoading.value = false
-        }, 200)
-
+        // Apply initial folding immediately
+        activeFolds.value.clear()
+        initializeDefaultFolds()
+        isLoading.value = false
       } else {
         console.warn('Could not access ACE editor instance')
         isLoading.value = false
@@ -117,12 +170,11 @@ const setupAceEditor = async () => {
 }
 
 const handleDirectAceChange = () => {
-  if (!aceEditorInstance) return
+  if (!aceEditorInstance || isUpdatingFromExternal) return
 
   try {
     const content = aceEditorInstance.getValue()
     const newStyle = JSON.parse(content)
-
 
     // Use debounced update to prevent excessive calls
     debouncedStyleUpdate(newStyle)
@@ -138,8 +190,11 @@ const handleDirectAceChange = () => {
 const cleanupAceEditor = () => {
   if (aceEditorInstance) {
     aceEditorInstance.off('change', handleDirectAceChange)
+    aceEditorInstance.getSession().off('changeFold', handleFoldChange)
     aceEditorInstance = null
   }
+  // Clear active folds state
+  activeFolds.value.clear()
   // Cancel any pending debounced calls
   debouncedStyleUpdate.cancel()
 }
@@ -164,6 +219,39 @@ const editorConfig = computed(() => {
     foldStyle: 'markbeginend',
     enableBasicAutocompletion: true,
     enableLiveAutocompletion: true,
+  }
+})
+
+// Watch for external style changes (e.g., from LayerControl)
+watch(currentExampleStyle, (newStyle) => {
+  if (aceEditorInstance && newStyle) {
+    const currentContent = aceEditorInstance.getValue()
+    const newContent = JSON.stringify(newStyle, null, 2)
+
+    // Only update if content actually changed to avoid unnecessary updates
+    if (currentContent !== newContent) {
+      isUpdatingFromExternal = true
+
+      // Preserve cursor position
+      const cursorPosition = aceEditorInstance.getCursorPosition()
+
+      // Update the content
+      aceEditorInstance.setValue(newContent, -1) // -1 preserves cursor position
+
+      // Restore cursor position
+      aceEditorInstance.moveCursorToPosition(cursorPosition)
+
+      // Clear undo history to prevent confusion
+      aceEditorInstance.getSession().getUndoManager().reset()
+
+      // Re-apply default folds immediately after content update
+      initializeDefaultFolds()
+
+      // Re-enable internal updates after a brief delay
+      setTimeout(() => {
+        isUpdatingFromExternal = false
+      }, 100)
+    }
   }
 })
 
@@ -223,9 +311,11 @@ const editorSchema = computed(() => ({
 
 <style scoped>
 .code-editor-container {
-  height: 100%;
-  width: 100%;
-  position: relative;
+  position: fixed;
+  top: -40px;
+  left: 0;
+  width: calc(var(--sidebar-width, 300px) - 12px);
+  height: calc(100vh + 40px);
 }
 
 .loader-overlay {
@@ -246,4 +336,40 @@ const editorSchema = computed(() => ({
     background-color: rgba(30, 30, 30, 0.9);
   }
 }
+</style>
+
+<style>
+/* Global styles to hide the ACE editor label */
+.code-editor-container .je-object__title {
+  display: none !important;
+}
+
+.code-editor-container .je-object__container > .je-object__title {
+  display: none !important;
+}
+
+.code-editor-container [data-schemapath='root.code'] > label {
+  display: none !important;
+}
+
+/* Hide the "code" label specifically */
+.code-editor-container .je-form-input-label:has(+ [data-schemapath='root.code']) {
+  display: none !important;
+}
+
+.code-editor-container h3:has(+ div[data-schemapath='root.code']) {
+  display: none !important;
+}
+
+/* Target the label that contains "code" text */
+.code-editor-container label[for*='code'] {
+  display: none !important;
+}
+
+/* Also hide any container that only contains the code label */
+.code-editor-container .je-header {
+  display: none !important;
+}
+
+/* No padding - toolbar overlays content */
 </style>

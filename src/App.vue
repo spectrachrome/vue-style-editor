@@ -4,7 +4,6 @@ import { ref, onMounted, nextTick, watch } from 'vue'
 import MapView from './components/MapView.vue'
 import LayerControl from './components/LayerControl.vue'
 import CodeEditor from './components/CodeEditor.vue'
-import EditorToolbar from './components/EditorToolbar.vue'
 import MapToolbar from './components/MapToolbar.vue'
 import MapButtons from './components/MapButtons.vue'
 import { useLayerControl } from './composables/useLayerControl.js'
@@ -80,6 +79,11 @@ watch(isLayerControlVisible, (isVisible) => {
     })
   }
 })
+
+// Update CSS variable on document root when sidebar width changes
+watch(asideWidth, (newWidth) => {
+  document.documentElement.style.setProperty('--sidebar-width', newWidth + 'px')
+}, { immediate: true })
 </script>
 
 <template>
@@ -92,8 +96,9 @@ watch(isLayerControlVisible, (isVisible) => {
   <MapButtons />
 
   <aside :style="{ width: asideWidth + 'px' }">
-    <EditorToolbar />
-    <CodeEditor class="flex-grow" />
+    <div class="sidebar-content">
+      <CodeEditor />
+    </div>
     <div class="resize-handle" @mousedown="startResize"></div>
   </aside>
 
@@ -180,7 +185,7 @@ aside {
   background: #fff;
   transition: none;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -206,10 +211,17 @@ aside {
   }
 }
 
+.sidebar-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
 .resize-handle {
-  position: absolute;
+  position: relative;
   top: 0;
-  right: 0;
   bottom: 0;
   width: 12px;
   background: rgba(0, 0, 0, 0.05);
@@ -219,6 +231,7 @@ aside {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .resize-handle::before {
