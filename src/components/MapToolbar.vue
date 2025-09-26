@@ -1,17 +1,66 @@
 <template>
   <div class="map-toolbar">
-    <button class="small">Import Data</button>
+    <div class="row no-gap">
+      <nav class="group connected primary-container">
+        <button
+          class="primary left-round small"
+          style="
+            background: #004170bb !important;
+            backdrop-filter: blur(10px);
+            color: #fff !important;
+          "
+        >
+          <svg
+            class="data-icon"
+            style="transform: scale(0.8) translateX(2px)"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+          >
+            <title>vector-polyline</title>
+            <path
+              d="M2 3V9H4.95L6.95 15H6V21H12V16.41L17.41 11H22V5H16V9.57L10.59 15H9.06L7.06 9H8V3M4 5H6V7H4M18 7H20V9H18M8 17H10V19H8Z"
+            />
+          </svg>
+          <span v-if="currentDataName" class="max data-filename">{{ currentDataName }}</span>
+          <span v-else class="data-no-file">No data loaded</span>
+        </button>
+        <button
+          ref="dropdownButtonRef"
+          class="primary right-round small"
+          @click="toggleDropdown"
+          :class="{ active: isDropdownOpen }"
+          style="
+            background: #004170bb !important;
+            backdrop-filter: blur(10px);
+            color: #fff !important;
+          "
+        >
+          Load new dataset
+        </button>
+      </nav>
+    </div>
 
     <div class="dropdown-container">
-      <button
-        ref="dropdownButtonRef"
-        class="small"
-        @click="toggleDropdown"
-        :class="{ active: isDropdownOpen }"
-      >
-        Examples
-        <i class="dropdown-arrow">▼</i>
-      </button>
+      <nav class="group connected primary-container">
+        <button
+          ref="dropdownButtonRef"
+          class="primary round small"
+          @click="toggleDropdown"
+          :class="{ active: isDropdownOpen }"
+          style="
+            background: #004170bb !important;
+            backdrop-filter: blur(10px);
+            color: #fff !important;
+          "
+        >
+          Examples
+          <i class="dropdown-arrow"
+            ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+              <title>chevron-down</title>
+              <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z" /></svg
+          ></i>
+        </button>
+      </nav>
 
       <Teleport to="body">
         <div v-if="isDropdownOpen" class="dropdown-menu" :style="dropdownPosition" @click.stop>
@@ -37,7 +86,33 @@ import { useExamples } from '../composables/useExamples.js'
 
 const isDropdownOpen = ref(false)
 const dropdownButtonRef = ref(null)
-const { setCurrentExample } = useExamples()
+const { setCurrentExample, currentExample, dataLayers } = useExamples()
+
+// Compute the current data name/path
+const currentDataName = computed(() => {
+  if (currentExample.value) {
+    // If an example is loaded, show its name
+    return currentExample.value.name
+  } else if (dataLayers.value && dataLayers.value.length > 0) {
+    // If custom data is loaded, try to extract filename from URL
+    const firstLayer = dataLayers.value.find((layer) => layer.source?.url)
+    if (firstLayer?.source?.url) {
+      const url = firstLayer.source.url
+      // Extract filename from URL path
+      const filename = url.split('/').pop().split('?')[0]
+      return filename || 'Custom data'
+    }
+  }
+  return null
+})
+
+// Handle import data button click
+const handleImportData = () => {
+  // TODO: Implement file picker dialog
+  console.log('Import data clicked')
+  // For now, just log - actual implementation would open a file picker
+  // or modal dialog for importing data
+}
 
 const toggleDropdown = () => {
   isDropdownOpen.value = !isDropdownOpen.value
@@ -57,7 +132,6 @@ const dropdownPosition = computed(() => {
   }
 })
 
-
 const closeDropdownOnClickOutside = (event) => {
   if (!event.target.closest('.dropdown-container')) {
     isDropdownOpen.value = false
@@ -71,12 +145,15 @@ const autoSelectFromURL = () => {
 
   if (exampleParam) {
     // Find example by ID
-    const example = examples.find(ex => ex.id === exampleParam)
+    const example = examples.find((ex) => ex.id === exampleParam)
 
     if (example) {
       setCurrentExample(example)
     } else {
-      console.warn(`Example "${exampleParam}" not found. Available examples:`, examples.map(ex => ex.name))
+      console.warn(
+        `Example "${exampleParam}" not found. Available examples:`,
+        examples.map((ex) => ex.name),
+      )
     }
   }
 }
@@ -112,14 +189,37 @@ onUnmounted(() => {
 
 .map-toolbar {
   position: absolute;
-  top: 10px;
-  left: 10px;
-  right: 10px;
+  top: 0;
+  left: 0;
+  right: 0;
   height: 50px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-direction: row;
   z-index: 5000;
+}
+
+/* Data status button styling */
+.data-status-button {
+  min-width: 140px;
+  max-width: 280px;
+  cursor: default !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.95) !important;
+}
+
+.data-filename {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.data-no-file {
+  color: var(--on-surface-variant);
+  font-style: italic;
 }
 
 /* Button transparency and blur styling */
@@ -129,10 +229,15 @@ onUnmounted(() => {
   background: #004170ee !important;
 }
 
-.map-toolbar button:hover {
+.map-toolbar button:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.9);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.map-toolbar .data-status-button:hover {
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -142,8 +247,12 @@ onUnmounted(() => {
     color: #fff;
   }
 
-  .map-toolbar button:hover {
+  .map-toolbar button:hover:not(:disabled) {
     background: rgba(45, 45, 45, 0.9);
+  }
+
+  .data-status-button {
+    background: rgba(40, 40, 40, 0.95) !important;
   }
 }
 

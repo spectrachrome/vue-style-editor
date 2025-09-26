@@ -2,9 +2,7 @@
 <template>
   <div class="map-container">
     <eox-map ref="mapRef">
-      <eox-map-tooltip
-        :propertyTransform="tooltipPropertyTransform"
-      ></eox-map-tooltip>
+      <eox-map-tooltip :propertyTransform="tooltipPropertyTransform"></eox-map-tooltip>
     </eox-map>
 
     <!-- Loading overlay - ONLY an overlay, never removes the map DOM -->
@@ -58,7 +56,7 @@ const tooltipPropertyTransform = (param) => {
 
     return {
       key: tooltipProp.title || param.key,
-      value: `${value} ${tooltipProp.appendix || ''}`.trim()
+      value: `${value} ${tooltipProp.appendix || ''}`.trim(),
     }
   }
 
@@ -68,7 +66,7 @@ const tooltipPropertyTransform = (param) => {
     if (tooltipConfig[param.key]) {
       return {
         key: tooltipConfig[param.key].title || param.key,
-        value: param.value
+        value: param.value,
       }
     }
   }
@@ -136,7 +134,6 @@ const mapLayers = computed(() => {
   return layers
 })
 
-
 // Sanitize layer to ensure it has all required properties for eox-map
 const sanitizeLayer = (layer) => {
   // Deep clone to remove Vue reactivity proxies and ensure plain objects
@@ -185,7 +182,8 @@ const sanitizeLayer = (layer) => {
 
     // Remove any existing tooltip interactions
     sanitized.interactions = sanitized.interactions.filter(
-      interaction => !(interaction.type === 'select' && interaction.options?.condition === 'pointermove')
+      (interaction) =>
+        !(interaction.type === 'select' && interaction.options?.condition === 'pointermove'),
     )
 
     // Only add hover interaction if tooltip is configured in style
@@ -194,8 +192,8 @@ const sanitizeLayer = (layer) => {
         type: 'select',
         options: {
           condition: 'pointermove',
-          tooltip: true
-        }
+          tooltip: true,
+        },
       })
     }
   }
@@ -299,64 +297,67 @@ const updateMapView = async () => {
   }
 }
 
-
-
 // Track last layer data to detect style-only changes
 let lastLayerData = null
 
 // Watch for layer changes and preserve view during style updates
-watch(mapLayers, async (newLayers) => {
-  // Capture current view before any updates
-  let capturedView = null
-  if (mapRef.value && lastLayerData) {
-    // Check if this is a style-only update by comparing non-style properties
-    const stripStyle = (layers) => layers.map(l => ({
-      id: l.id,
-      type: l.type,
-      source: l.source,
-      extent: l.extent
-    }))
+watch(
+  mapLayers,
+  async (newLayers) => {
+    // Capture current view before any updates
+    let capturedView = null
+    if (mapRef.value && lastLayerData) {
+      // Check if this is a style-only update by comparing non-style properties
+      const stripStyle = (layers) =>
+        layers.map((l) => ({
+          id: l.id,
+          type: l.type,
+          source: l.source,
+          extent: l.extent,
+        }))
 
-    const newStripped = JSON.stringify(stripStyle(newLayers))
-    const lastStripped = JSON.stringify(stripStyle(lastLayerData))
+      const newStripped = JSON.stringify(stripStyle(newLayers))
+      const lastStripped = JSON.stringify(stripStyle(lastLayerData))
 
-    if (newStripped === lastStripped) {
-      // Style-only update - capture current view and prevent auto-recentering
-      // Get the actual current view from the OpenLayers map instance
-      const olMap = mapRef.value?.map
-      if (olMap) {
-        const view = olMap.getView()
-        const currentCenter = view.getCenter()
-        const currentZoom = view.getZoom()
+      if (newStripped === lastStripped) {
+        // Style-only update - capture current view and prevent auto-recentering
+        // Get the actual current view from the OpenLayers map instance
+        const olMap = mapRef.value?.map
+        if (olMap) {
+          const view = olMap.getView()
+          const currentCenter = view.getCenter()
+          const currentZoom = view.getZoom()
 
-        // Convert from EPSG:3857 to EPSG:4326 for center
-        const [lon, lat] = proj4('EPSG:3857', 'EPSG:4326', currentCenter)
+          // Convert from EPSG:3857 to EPSG:4326 for center
+          const [lon, lat] = proj4('EPSG:3857', 'EPSG:4326', currentCenter)
 
-        shouldPreserveView.value = true
-        capturedView = {
-          center: [lon, lat],
-          zoom: currentZoom
+          shouldPreserveView.value = true
+          capturedView = {
+            center: [lon, lat],
+            zoom: currentZoom,
+          }
         }
       }
     }
-  }
 
-  // Update layers
-  await updateMapLayers()
+    // Update layers
+    await updateMapLayers()
 
-  // Restore view if this was a style-only update
-  if (capturedView && mapRef.value) {
-    // Use nextTick instead of setTimeout for more reliable timing
-    await nextTick()
-    if (mapRef.value) {
-      mapRef.value.center = capturedView.center
-      mapRef.value.zoom = capturedView.zoom
+    // Restore view if this was a style-only update
+    if (capturedView && mapRef.value) {
+      // Use nextTick instead of setTimeout for more reliable timing
+      await nextTick()
+      if (mapRef.value) {
+        mapRef.value.center = capturedView.center
+        mapRef.value.zoom = capturedView.zoom
+      }
     }
-  }
 
-  // Update tracking data
-  lastLayerData = JSON.parse(JSON.stringify(newLayers))
-}, { immediate: false })
+    // Update tracking data
+    lastLayerData = JSON.parse(JSON.stringify(newLayers))
+  },
+  { immediate: false },
+)
 
 watch(mapViewParams, updateMapView, { immediate: false })
 
@@ -396,7 +397,7 @@ eox-map {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: rgba(255, 255, 255, 0.5);
   backdrop-filter: blur(4px);
   display: flex;
   justify-content: center;
@@ -406,7 +407,7 @@ eox-map {
 
 @media (prefers-color-scheme: dark) {
   .map-loading-overlay {
-    background-color: rgba(30, 30, 30, 0.9);
+    background-color: rgba(30, 30, 30, 0.5);
   }
 }
 

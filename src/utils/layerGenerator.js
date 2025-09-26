@@ -112,10 +112,16 @@ export function generateMapLayer({ dataUrl, name, style, format, id, properties 
       if (!layer.properties.layerConfig) {
         layer.properties.layerConfig = {}
       }
+      // Include variables in the style object where eox-layercontrol expects them
+      const styleWithVariables = {
+        ...style,
+        variables: style?.variables || {}
+      }
+
       layer.properties.layerConfig = {
         ...layer.properties.layerConfig,
         schema: style?.jsonform || style?.schema,
-        style: style,
+        style: styleWithVariables,  // Style now includes variables
         legend: style?.legend
       }
     } else if (layerType === 'WebGLTile') {

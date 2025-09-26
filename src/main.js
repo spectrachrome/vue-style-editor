@@ -1,4 +1,5 @@
 import './assets/main.css'
+import '@eox/ui/style.css'
 
 import { createApp } from 'vue'
 import App from './App.vue'

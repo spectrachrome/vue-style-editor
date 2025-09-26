@@ -12,6 +12,7 @@ const { startMapLoading, stopMapLoading } = useLoading()
 
 export function useExamples() {
   const setCurrentExample = async (example) => {
+    console.log('setCurrentExample called for:', example.name)
     startMapLoading()
 
     currentExample.value = example
@@ -20,6 +21,7 @@ export function useExamples() {
 
     if (example) {
       if (example.layers) {
+        console.log('Processing layers in setCurrentExample, layer count:', example.layers.length)
         // Use the new layer definitions with format registry, applying editor style
         const processedLayers = await processLayers(example.layers, currentExampleStyle.value)
 
@@ -32,10 +34,16 @@ export function useExamples() {
             if (!l.properties.layerConfig) {
               l.properties.layerConfig = {}
             }
+            // Include variables in the style object where eox-layercontrol expects them
+            const styleWithVariables = {
+              ...processedStyle,
+              variables: currentExampleStyle.value.variables || {}
+            }
+
             l.properties.layerConfig = {
               ...l.properties.layerConfig,
               schema: currentExampleStyle.value.jsonform || currentExampleStyle.value.schema,
-              style: processedStyle,  // Use processed style
+              style: styleWithVariables,  // Style now includes variables
               legend: currentExampleStyle.value.legend
             }
           }
@@ -81,6 +89,7 @@ export function useExamples() {
   }
 
   const updateCurrentStyle = async (newStyle) => {
+    console.log('updateCurrentStyle called')
     // Don't show loading indicator for style-only updates
     currentExampleStyle.value = newStyle
 
@@ -88,6 +97,7 @@ export function useExamples() {
     if (currentExample.value?.layers) {
       // Use current dataLayers which have calculated extents, not original example layers
       const layersWithExtents = dataLayers.value.length > 0 ? dataLayers.value : currentExample.value.layers
+      console.log('Processing layers in updateCurrentStyle, layer count:', layersWithExtents.length)
       const processedLayers = await processLayers(layersWithExtents, newStyle)
 
       processedLayers.forEach((l) => {
@@ -99,10 +109,16 @@ export function useExamples() {
           if (!l.properties.layerConfig) {
             l.properties.layerConfig = {}
           }
+          // Include variables in the style object where eox-layercontrol expects them
+          const styleWithVariables = {
+            ...processedStyle,
+            variables: newStyle.variables || {}
+          }
+
           l.properties.layerConfig = {
             ...l.properties.layerConfig,
             schema: newStyle.jsonform || newStyle.schema,
-            style: processedStyle,  // Use processed style
+            style: styleWithVariables,  // Style now includes variables
             legend: newStyle.legend
           }
         }
@@ -123,10 +139,16 @@ export function useExamples() {
           if (!updatedLayer.properties.layerConfig) {
             updatedLayer.properties.layerConfig = {}
           }
+          // Include variables in the style object where eox-layercontrol expects them
+          const styleWithVariables = {
+            ...processedStyle,
+            variables: newStyle.variables || {}
+          }
+
           updatedLayer.properties.layerConfig = {
             ...updatedLayer.properties.layerConfig,
             schema: newStyle.jsonform || newStyle.schema,
-            style: processedStyle,  // Use processed style
+            style: styleWithVariables,  // Style now includes variables
             legend: newStyle.legend
           }
         }

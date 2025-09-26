@@ -24,11 +24,29 @@ The application is built around three main EOX web components:
 ### Application Structure
 
 - **Main Layout** (`src/App.vue`): Split-pane interface with resizable sidebar
-  - Left sidebar: Contains code editor (via `eox-jsonform`) and toolbar
+  - Left sidebar: Contains code editor (via `eox-jsonform`) and fixed overlay toolbar
   - Right main area: Map view (`eox-map`)
   - Top-right overlay: Layer control panel (`eox-layercontrol`)
 
 - **Sidebar Resizing**: Custom drag-to-resize implementation using mouse events and `requestAnimationFrame`
+  - CSS variable `--sidebar-width` is updated on document root for global access
+  - Fixed positioned components (EditorToolbar, CodeEditor) respond to width changes
+
+### Fixed Positioning Architecture
+
+**EditorToolbar.vue**:
+- `position: fixed` with `z-index: 1000`
+- Two-row overlay (80px total height) with white background
+- Top row: Logo text and settings icon (space-between layout)
+- Bottom row: Editor action buttons (copy, paste, etc.)
+- Width responds to `--sidebar-width` CSS variable
+- `pointer-events: none` on container, `pointer-events: auto` on content
+
+**CodeEditor.vue**:
+- `position: fixed` starting at `top: 40px` (overlaps toolbar by 40px to hide eox-jsonform whitespace)
+- Height: `calc(100vh - 80px)` to account for toolbar
+- Width responds to `--sidebar-width` CSS variable
+- No padding - toolbar overlays the blank eox-jsonform space
 
 ### Style Examples System
 
@@ -91,10 +109,15 @@ Examples are organized in `src/examples/`:
 ### Style Management Flow
 
 **Editor as Source of Truth:**
-- CodeEditor captures real-time changes via `@change` event on `eox-jsonform`
-- `handleStyleChange()` parses JSON and calls `updateCurrentStyle()` on valid changes
+- CodeEditor captures real-time changes via direct ACE editor access
+- `handleDirectAceChange()` parses JSON and calls `updateCurrentStyle()` on valid changes
 - `useExamples.updateCurrentStyle()` re-processes layers with new style
 - Both new layer definitions and legacy layers receive editor style override
+
+**Bidirectional Synchronization:**
+- LayerControl form changes update style variables via `handleGenericChange` event handler
+- CodeEditor watcher responds to external style changes and updates ACE editor content
+- Variables are stored in `layerConfig.style.variables` for proper eox-layercontrol integration
 
 **Style Update Sequence:**
 1. **Initial Load**: Example style → editor → layers (with format processing)
@@ -109,11 +132,22 @@ Examples are organized in `src/examples/`:
 
 ### ACE Editor Integration
 
+**Direct ACE Access Pattern:**
+- Uses `querySelector("eox-jsonform").editor.editors["root.code"]["ace_editor_instance"]` for direct access
+- Bypasses eox-jsonform event system for better performance and control
+- Immediate folding application prevents Flash of Unwanted Structure (FOUS)
+
+**Code Folding Management:**
+- `initializeDefaultFolds()` - Collapses JSON sections at depth > 1 immediately
+- `collapseAllExcept(exemptRange)` - Auto-collapse behavior when expanding sections
+- `handleFoldChange()` - Tracks fold state changes for interactive behavior
+- **No delays**: Folding applied immediately to prevent visual glitches
+
 **Responsive Configuration:**
 - CodeEditor uses ResizeObserver for dynamic dimension tracking
 - ACE config calculated from container height: `fontSize * 1.4` line-height ratio
 - Reactive `maxLines` and `maxPixelHeight` based on available space
-- Font configuration: `fontSize: 14, fontFamily: "'IBM Plex Mono'"`
+- Font configuration: `fontSize: 15, fontFamily: "'IBM Plex Mono'"`
 - Minimum constraints: 200px height, 10 lines to ensure usability
 - Theme switching: monokai (dark) / textmate (light) based on system preference
 
@@ -134,7 +168,6 @@ const editorConfig = computed(() => {
 ```
 
 **Event Handling:**
-- **Direct ACE Access**: Uses `querySelector("eox-jsonform").editor.editors["root.code"]["ace_editor_instance"]` pattern (from Lit app)
 - **Debounced Updates**: 650ms debounce using lodash/debounce to prevent excessive style updates while typing
 - **Real-time Feedback**: ACE editor `change` events provide immediate response without overwhelming the system
 - **Focus Control**: Available via `.textInput.getElement().focus()` for programmatic focus management
@@ -194,6 +227,14 @@ Auto-formatting and ESLint fixes on save are enabled by default.
 2. Make minimal, testable changes
 3. Refine based on real behavior, not assumptions
 
+## Project-wide Guidelines
+
+- Search for information selectively to keep the context window small
+- Search relevant `eox-` prefixed dependencies to get more detailed information about how the general components work internally, if you hit a wall with the code within this repository
+- When debugging layout issues, remember that EditorToolbar and CodeEditor use fixed positioning and respond to `--sidebar-width` CSS variable changes
+- For ACE editor issues, use direct access pattern rather than trying to work through eox-jsonform events
+- Apply code folding immediately without delays to prevent visual glitches
+
 ## Git Commit Guidelines
 
 When creating git commits, follow these conventions:
@@ -230,3 +271,10 @@ fix: resolve layer styling persistence during editing
 **Changed:**
 - Layer styling pipeline now processes variables before applying to map
 ```
+
+## Important Instructions
+
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
