@@ -1,9 +1,37 @@
 import { deserialize } from 'flatgeobuf/lib/mjs/geojson.js'
 import proj4 from 'proj4'
 
-async function getFgbExtent(url) {
+// Cache for FGB buffers to prevent multiple fetches of the same URL
+const bufferCache = new Map()
+const extentCache = new Map()
+
+async function getFgbBuffer(url) {
+  // Check buffer cache first
+  if (bufferCache.has(url)) {
+    console.log(`FGB buffer cache hit for: ${url}`)
+    return bufferCache.get(url)
+  }
+
+  console.log(`Fetching FGB buffer for: ${url}`)
   const response = await fetch(url)
   const buffer = await response.arrayBuffer()
+
+  // Cache the buffer
+  bufferCache.set(url, buffer)
+  console.log(`Cached FGB buffer for: ${url}`)
+
+  return buffer
+}
+
+async function getFgbExtent(url) {
+  // Check extent cache first
+  if (extentCache.has(url)) {
+    console.log(`FGB extent cache hit for: ${url}`)
+    return extentCache.get(url)
+  }
+
+  console.log(`Calculating FGB extent for: ${url}`)
+  const buffer = await getFgbBuffer(url)
 
   let minX = Infinity
   let minY = Infinity
@@ -46,21 +74,49 @@ async function getFgbExtent(url) {
 
   } catch (error) {
     console.error('Error iterating through features:', error)
+    extentCache.set(url, undefined)
     return undefined
   }
 
   if (featureCount === 0) {
     console.warn('No features found')
+    extentCache.set(url, undefined)
     return undefined
   }
 
   if (minX === Infinity) {
     console.warn('No valid coordinates found')
+    extentCache.set(url, undefined)
     return undefined
   }
 
   const extent = [minX, minY, maxX, maxY]
+
+  // Cache the result
+  extentCache.set(url, extent)
+  console.log(`Cached FGB extent for: ${url}`)
+
   return extent
 }
 
-export { getFgbExtent }
+async function getFgbAsGeoJSON(url) {
+  console.log(`Converting FGB to GeoJSON for: ${url}`)
+  const buffer = await getFgbBuffer(url)
+
+  try {
+    const features = []
+    for await (const feature of deserialize(new Uint8Array(buffer))) {
+      features.push(feature)
+    }
+
+    return {
+      type: 'FeatureCollection',
+      features: features
+    }
+  } catch (error) {
+    console.error('Error converting FGB to GeoJSON:', error)
+    return null
+  }
+}
+
+export { getFgbExtent, getFgbBuffer, getFgbAsGeoJSON }

@@ -30,6 +30,8 @@ const FormatHandler = {
 const FlatGeoBufHandler = Object.create(FormatHandler)
 FlatGeoBufHandler.supports = (sourceType) => sourceType === 'FlatGeoBuf' || sourceType === 'flatgeobuf'
 FlatGeoBufHandler.processLayer = async function (layer) {
+  console.log('FlatGeoBuf handler called for layer:', layer.id || 'no-id', 'URL:', layer.source?.url)
+  console.trace('FlatGeoBuf handler call stack')
   const processedLayer = { ...layer }
 
   // Skip extent calculation if layer already has an extent
@@ -97,6 +99,8 @@ export function registerFormatHandler(sourceType, handler) {
  * @returns {Promise<Array>} - Array of processed layers
  */
 export async function processLayers(layers, editorStyle = null) {
+  console.log('processLayers called with', layers.length, 'layers')
+  console.trace('processLayers call stack')
   const processedLayers = []
 
   for (const layer of layers) {
@@ -126,10 +130,17 @@ export async function processLayers(layers, editorStyle = null) {
         if (!processedLayer.properties.layerConfig) {
           processedLayer.properties.layerConfig = {}
         }
+
+        // Include variables in the style object where eox-layercontrol expects them
+        const styleWithVariables = {
+          ...processedStyle,
+          variables: editorStyle.variables || {}
+        }
+
         processedLayer.properties.layerConfig = {
           ...processedLayer.properties.layerConfig,
           schema: editorStyle.jsonform || editorStyle.schema,
-          style: processedStyle,  // Use processed style
+          style: styleWithVariables,  // Style now includes variables
           legend: editorStyle.legend
         }
       }
