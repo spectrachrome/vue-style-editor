@@ -32,8 +32,6 @@ const FormatHandler = {
 const FlatGeoBufHandler = Object.create(FormatHandler)
 FlatGeoBufHandler.supports = (sourceType) => sourceType === 'FlatGeoBuf' || sourceType === 'flatgeobuf'
 FlatGeoBufHandler.processLayer = async function (layer) {
-  console.log('FlatGeoBuf handler called for layer:', layer.id || 'no-id', 'URL:', layer.source?.url)
-  console.trace('FlatGeoBuf handler call stack')
   const processedLayer = { ...layer }
 
   // Skip extent calculation if layer already has an extent
@@ -73,7 +71,6 @@ GeoJSONHandler.supports = (sourceType) => {
   return type === 'geojson' || type === 'vector'
 }
 GeoJSONHandler.processLayer = async function (layer) {
-  console.log('GeoJSON handler called for layer:', layer.id || 'no-id', 'URL:', layer.source?.url)
   const processedLayer = { ...layer }
 
   // Check if this is actually a GeoJSON source (Vector type with GeoJSON format or GeoJSON source type)
@@ -125,7 +122,6 @@ GeoTIFFHandler.supports = (sourceType) => {
   return type === 'geotiff'
 }
 GeoTIFFHandler.processLayer = async function (layer) {
-  console.log('GeoTIFF handler called for layer:', layer.id || 'no-id', 'URL:', layer.source?.url)
   const processedLayer = { ...layer }
 
   // Skip extent calculation if layer already has an extent
@@ -201,8 +197,6 @@ export function registerFormatHandler(sourceType, handler) {
  * @returns {Promise<Array>} - Array of processed layers
  */
 export async function processLayers(layers, editorStyle = null) {
-  console.log('processLayers called with', layers.length, 'layers')
-  console.trace('processLayers call stack')
   const processedLayers = []
 
   for (const layer of layers) {
@@ -227,16 +221,16 @@ export async function processLayers(layers, editorStyle = null) {
 
     // Override layer style with editor style if provided
     if (editorStyle) {
-      // Process variables in the style first
-      const processedStyle = updateVectorLayerStyle(editorStyle)
-
-      processedLayer = {
-        ...processedLayer,
-        style: processedStyle
-      }
-
-      // Also set complete layerConfig for eox-map compatibility
       if (processedLayer.type === 'Vector') {
+        // Process variables in the style first for Vector layers
+        const processedStyle = updateVectorLayerStyle(editorStyle)
+
+        processedLayer = {
+          ...processedLayer,
+          style: processedStyle
+        }
+
+        // Also set complete layerConfig for eox-map compatibility
         if (!processedLayer.properties.layerConfig) {
           processedLayer.properties.layerConfig = {}
         }
@@ -251,6 +245,32 @@ export async function processLayers(layers, editorStyle = null) {
           ...processedLayer.properties.layerConfig,
           schema: editorStyle.jsonform || editorStyle.schema,
           style: styleWithVariables,  // Style now includes variables
+          legend: editorStyle.legend
+        }
+      } else if (processedLayer.type === 'WebGLTile') {
+        // For WebGLTile layers, MERGE editor style with existing style to preserve variables
+        // If the layer already has a style with variables, don't lose them!
+        const mergedStyle = {
+          ...(processedLayer.style || {}),  // Keep existing style (including variables from layer definition)
+          ...editorStyle  // Override with editor style (but this preserves variables if editor doesn't have them)
+        }
+        processedLayer = {
+          ...processedLayer,
+          style: mergedStyle
+        }
+
+        // Also add to layerConfig for consistency
+        if (!processedLayer.properties) {
+          processedLayer.properties = {}
+        }
+        if (!processedLayer.properties.layerConfig) {
+          processedLayer.properties.layerConfig = {}
+        }
+
+        processedLayer.properties.layerConfig = {
+          ...processedLayer.properties.layerConfig,
+          style: mergedStyle,  // Use merged style here too
+          schema: editorStyle.jsonform || editorStyle.schema,
           legend: editorStyle.legend
         }
       }

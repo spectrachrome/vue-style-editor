@@ -152,7 +152,7 @@ const sanitizeLayer = (layer) => {
     // or could be: 'FlatGeobuf', 'vector', etc.
   }
 
-  // Handle style - ONLY for Vector layers
+  // Handle style - different for Vector vs WebGLTile layers
   if (sanitized.type === 'Vector' && sanitized.style) {
     // For Vector layers, put style in both places
     sanitized.properties.layerConfig = {
@@ -160,8 +160,12 @@ const sanitizeLayer = (layer) => {
       style: sanitized.style,
     }
     // Keep sanitized.style as is for Vector layers
-  } else if (sanitized.type !== 'Vector') {
-    // Remove style from non-Vector layers
+  } else if (sanitized.type === 'WebGLTile' && sanitized.style) {
+    // For WebGLTile layers, keep the style for initial setup
+    // Variables will be updated via updateStyleVariables() after layer creation
+    // Keep sanitized.style as is for WebGLTile layers
+  } else if (sanitized.type !== 'Vector' && sanitized.type !== 'WebGLTile') {
+    // Remove style from other non-styled layers
     delete sanitized.style
     if (sanitized.properties?.layerConfig?.style) {
       delete sanitized.properties.layerConfig.style
@@ -295,6 +299,28 @@ const updateMapView = async () => {
 // Track last layer data to detect style-only changes
 let lastLayerData = null
 
+// Helper to update style variables for WebGLTile layers
+const updateGeoTIFFStyleVariables = async (layerId, variables) => {
+  if (!mapRef.value?.map) return
+
+  const olMap = mapRef.value.map
+  const layers = olMap.getLayers().getArray()
+
+  for (const layer of layers) {
+    if (layer.get('id') === layerId) {
+      // Check if this is a WebGLTile layer
+      if (layer.updateStyleVariables && typeof layer.updateStyleVariables === 'function') {
+        try {
+          layer.updateStyleVariables(variables)
+        } catch (error) {
+          console.error('Error updating style variables for layer', layerId, error)
+        }
+      }
+      break
+    }
+  }
+}
+
 // Watch for layer changes and preserve view during style updates
 watch(
   mapLayers,
@@ -337,6 +363,14 @@ watch(
 
     // Update layers
     await updateMapLayers()
+
+    // For WebGLTile layers with style variables, update them directly
+    await nextTick()
+    for (const layer of newLayers) {
+      if (layer.type === 'WebGLTile' && layer.style?.variables) {
+        await updateGeoTIFFStyleVariables(layer.id, layer.style.variables)
+      }
+    }
 
     // Restore view if this was a style-only update
     if (capturedView && mapRef.value) {

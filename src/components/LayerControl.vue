@@ -32,6 +32,12 @@ const handleGenericChange = (event) => {
       return
     }
 
+    // Don't update if formData is empty - this would destroy existing variables
+    if (Object.keys(formData).length === 0) {
+      console.log('Form data is empty, skipping update to preserve variables')
+      return
+    }
+
     // Check if the form data is actually different from current variables
     const currentVariables = currentExampleStyle.value.variables || {}
     const hasChanges = Object.keys(formData).some(key =>
