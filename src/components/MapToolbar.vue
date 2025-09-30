@@ -24,11 +24,49 @@
           <span v-if="currentDataName" class="max data-filename">{{ currentDataName }}</span>
           <span v-else class="data-no-file">No data loaded</span>
         </button>
+        <!-- URL Input Mode -->
+        <div v-if="isUrlInputMode" class="url-input-group">
+          <input
+            v-model="urlInput"
+            type="url"
+            placeholder="Enter dataset URL..."
+            class="url-input"
+            @keyup.enter="loadUrlData"
+            @keyup.escape="cancelUrlInput"
+            :disabled="isLoadingUrl"
+          />
+          <button
+            class="primary small"
+            @click="loadUrlData"
+            :disabled="!urlInput || isLoadingUrl"
+            style="
+              background: #004170bb !important;
+              backdrop-filter: blur(10px);
+              color: #fff !important;
+            "
+          >
+            {{ isLoadingUrl ? 'Loading...' : 'Load' }}
+          </button>
+          <button
+            class="secondary small"
+            @click="cancelUrlInput"
+            :disabled="isLoadingUrl"
+            style="
+              background: #004170bb !important;
+              backdrop-filter: blur(10px);
+              color: #fff !important;
+            "
+          >
+            Cancel
+          </button>
+        </div>
+
+        <!-- Default Button -->
         <button
+          v-else
           ref="dropdownButtonRef"
           class="primary right-round small"
-          @click="toggleDropdown"
-          :class="{ active: isDropdownOpen }"
+          @click="enterUrlInputMode"
           style="
             background: #004170bb !important;
             backdrop-filter: blur(10px);
@@ -83,10 +121,17 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import examples from '../examples/examples.js'
 import { useExamples } from '../composables/useExamples.js'
+import { validateDataUrl, detectDataFormat } from '../utils/layerGenerator.js'
 
 const isDropdownOpen = ref(false)
 const dropdownButtonRef = ref(null)
-const { setCurrentExample, currentExample, dataLayers } = useExamples()
+const { setCurrentExample, currentExample, dataLayers, currentExampleStyle, clearCurrentExample, setCustomDataLayers } = useExamples()
+
+// URL input mode state
+const isUrlInputMode = ref(false)
+const urlInput = ref('')
+const isLoadingUrl = ref(false)
+const urlError = ref('')
 
 // Compute the current data name/path
 const currentDataName = computed(() => {
@@ -112,6 +157,85 @@ const handleImportData = () => {
   console.log('Import data clicked')
   // For now, just log - actual implementation would open a file picker
   // or modal dialog for importing data
+}
+
+// URL input mode functions
+const enterUrlInputMode = () => {
+  isUrlInputMode.value = true
+  urlInput.value = ''
+  urlError.value = ''
+  // Focus the input after the next tick
+  setTimeout(() => {
+    const input = document.querySelector('.url-input')
+    if (input) input.focus()
+  }, 50)
+}
+
+const cancelUrlInput = () => {
+  isUrlInputMode.value = false
+  urlInput.value = ''
+  urlError.value = ''
+  isLoadingUrl.value = false
+}
+
+const loadUrlData = async () => {
+  if (!urlInput.value || isLoadingUrl.value) return
+
+  isLoadingUrl.value = true
+  urlError.value = ''
+
+  try {
+    // Validate URL format
+    let url
+    try {
+      url = new URL(urlInput.value)
+    } catch {
+      throw new Error('Invalid URL format')
+    }
+
+    // Validate that the URL is accessible
+    const isValid = await validateDataUrl(urlInput.value)
+    if (!isValid) {
+      throw new Error('Unable to access the URL. Please check if the URL is correct and accessible.')
+    }
+
+    // Detect data format
+    const format = detectDataFormat(urlInput.value)
+
+    // Extract filename from URL for display
+    const filename = urlInput.value.split('/').pop().split('?')[0] || 'Custom dataset'
+
+    // Generate the new layer
+    const newLayer = {
+      type: format === 'GeoTIFF' ? 'WebGLTile' : 'Vector',
+      source: {
+        type: format === 'GeoTIFF' ? 'GeoTIFF' : 'Vector',
+        url: urlInput.value,
+        format: format === 'GeoTIFF' ? undefined : format
+      },
+      id: `custom-layer-${Date.now()}`,
+      title: filename,
+      properties: {
+        visible: true
+      }
+    }
+
+    // Use the new setCustomDataLayers function to handle the layer
+    await setCustomDataLayers([newLayer])
+
+    // Exit input mode
+    isUrlInputMode.value = false
+    urlInput.value = ''
+
+    console.log(`Successfully loaded data from: ${urlInput.value}`)
+  } catch (error) {
+    console.error('Error loading URL data:', error)
+    urlError.value = error.message || 'Failed to load data from URL'
+    // You might want to show this error in the UI
+    alert(urlError.value)
+  } finally {
+    isLoadingUrl.value = false
+  }
 }
 
 const toggleDropdown = () => {
@@ -338,5 +462,63 @@ button.active .dropdown-arrow {
   .dropdown-item:hover {
     background: rgba(255, 255, 255, 0.1);
   }
+}
+
+/* URL Input Styling */
+.url-input-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex: 1;
+  max-width: 400px;
+}
+
+.url-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 2px solid #007bff;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease;
+  color: #333;
+}
+
+.url-input:focus {
+  border-color: #0056b3;
+}
+
+.url-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.url-input::placeholder {
+  color: #999;
+}
+
+@media (prefers-color-scheme: dark) {
+  .url-input {
+    background: rgba(30, 30, 30, 0.95);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .url-input:focus {
+    border-color: #007bff;
+  }
+
+  .url-input::placeholder {
+    color: #666;
+  }
+}
+
+/* Ensure buttons in URL input group align properly */
+.url-input-group button {
+  white-space: nowrap;
+  min-width: fit-content;
 }
 </style>

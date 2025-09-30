@@ -164,6 +164,47 @@ export function useExamples() {
     clearAllLayers()
   }
 
+  const setCustomDataLayers = async (layers) => {
+    startMapLoading()
+
+    // Clear current example since we're loading custom data
+    currentExample.value = null
+
+    // Process the layers with the current style if any
+    const processedLayers = await processLayers(layers, currentExampleStyle.value)
+
+    processedLayers.forEach((l) => {
+      if (l.type === 'Vector' && currentExampleStyle.value) {
+        // Process variables in style before applying
+        const processedStyle = updateVectorLayerStyle(currentExampleStyle.value)
+        l.style = processedStyle
+        // Also set complete layerConfig for eox-map compatibility
+        if (!l.properties.layerConfig) {
+          l.properties.layerConfig = {}
+        }
+        // Include variables in the style object where eox-layercontrol expects them
+        const styleWithVariables = {
+          ...processedStyle,
+          variables: currentExampleStyle.value.variables || {}
+        }
+
+        l.properties.layerConfig = {
+          ...l.properties.layerConfig,
+          schema: currentExampleStyle.value.jsonform || currentExampleStyle.value.schema,
+          style: styleWithVariables,  // Style now includes variables
+          legend: currentExampleStyle.value.legend
+        }
+      }
+    })
+
+    dataLayers.value = processedLayers
+
+    // Stop loading after a brief delay to let map update
+    setTimeout(() => {
+      stopMapLoading()
+    }, 1000)
+  }
+
   return {
     currentExample: computed(() => currentExample.value),
     currentExampleStyle: computed(() => currentExampleStyle.value),
@@ -174,5 +215,6 @@ export function useExamples() {
     clearAllLayers,
     clearCurrentExample,
     updateCurrentStyle,
+    setCustomDataLayers,
   }
 }

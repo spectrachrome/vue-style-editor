@@ -1,4 +1,5 @@
 import { getFgbExtent } from './flatgeobuf.js'
+import { getGeoJSONExtent } from './geojson.js'
 import { updateVectorLayerStyle } from '../utils/styleProcessor.js'
 
 /**
@@ -64,6 +65,58 @@ FlatGeoBufHandler.processLayer = async function (layer) {
   return processedLayer
 }
 
+// GeoJSON handler for extent calculation
+const GeoJSONHandler = Object.create(FormatHandler)
+GeoJSONHandler.supports = (sourceType) => {
+  const type = sourceType?.toLowerCase()
+  return type === 'geojson' || type === 'vector'
+}
+GeoJSONHandler.processLayer = async function (layer) {
+  console.log('GeoJSON handler called for layer:', layer.id || 'no-id', 'URL:', layer.source?.url)
+  const processedLayer = { ...layer }
+
+  // Check if this is actually a GeoJSON source (Vector type with GeoJSON format or GeoJSON source type)
+  const isGeoJSON =
+    layer.source?.format === 'GeoJSON' ||
+    layer.source?.type === 'GeoJSON' ||
+    (layer.source?.type === 'Vector' && layer.source?.url?.toLowerCase().includes('json'))
+
+  if (!isGeoJSON) {
+    // Not a GeoJSON layer, return unchanged
+    return processedLayer
+  }
+
+  // Skip extent calculation if layer already has an extent
+  if (layer.extent && Array.isArray(layer.extent) && layer.extent.length === 4) {
+    processedLayer.extent = layer.extent
+    processedLayer.properties = {
+      ...processedLayer.properties,
+      __extentCalculated: true
+    }
+  } else if (layer.source?.url) {
+    try {
+      const extent = await getGeoJSONExtent(layer.source.url)
+
+      if (extent) {
+        processedLayer.extent = extent
+        // Add a visible marker that we can check
+        processedLayer.properties = {
+          ...processedLayer.properties,
+          __extentCalculated: true
+        }
+        console.log('GeoJSON extent calculated:', extent)
+      } else {
+        console.warn('GeoJSON extent calculation returned null for:', layer.source.url)
+        // Continue processing without extent - the layer will still work without it
+      }
+    } catch (error) {
+      console.error('GeoJSON extent calculation failed:', error.message)
+    }
+  }
+
+  return processedLayer
+}
+
 // Default handler for unsupported formats
 const DefaultHandler = Object.create(FormatHandler)
 DefaultHandler.supports = () => true // Catches all
@@ -71,6 +124,7 @@ DefaultHandler.supports = () => true // Catches all
 // Registry hashmap
 const formatHandlers = new Map([
   ['FlatGeoBuf', FlatGeoBufHandler],
+  ['GeoJSON', GeoJSONHandler],
   ['default', DefaultHandler],
 ])
 
@@ -104,7 +158,15 @@ export async function processLayers(layers, editorStyle = null) {
   const processedLayers = []
 
   for (const layer of layers) {
-    const handler = getFormatHandler(layer.source?.type)
+    // Determine the correct handler based on source format or type
+    let handler
+    if (layer.source?.format) {
+      // Use format if specified (e.g., FlatGeoBuf, GeoJSON)
+      handler = getFormatHandler(layer.source.format)
+    } else {
+      // Fall back to source type
+      handler = getFormatHandler(layer.source?.type)
+    }
     let processedLayer = await handler.processLayer(layer)
 
     // Ensure layer has proper ID structure
