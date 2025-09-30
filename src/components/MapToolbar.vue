@@ -186,9 +186,9 @@ const loadUrlData = async () => {
 
   try {
     // Validate URL format
-    let url
+    let validUrl
     try {
-      url = new URL(urlInput.value)
+      validUrl = new URL(urlInput.value)
     } catch {
       throw new Error('Invalid URL format')
     }
@@ -205,29 +205,45 @@ const loadUrlData = async () => {
     // Extract filename from URL for display
     const filename = urlInput.value.split('/').pop().split('?')[0] || 'Custom dataset'
 
-    // Generate the new layer
+    // Generate the new layer matching the example structure
+    const layerId = `custom-layer-${Date.now()}`
     const newLayer = {
       type: format === 'GeoTIFF' ? 'WebGLTile' : 'Vector',
+      id: layerId, // Add id at root level too
+      properties: {
+        id: layerId,
+        title: filename,
+        visible: true
+      },
       source: {
         type: format === 'GeoTIFF' ? 'GeoTIFF' : 'Vector',
         url: urlInput.value,
         format: format === 'GeoTIFF' ? undefined : format
       },
-      id: `custom-layer-${Date.now()}`,
-      title: filename,
-      properties: {
-        visible: true
-      }
+      // Add a basic style for vector layers
+      style: format !== 'GeoTIFF' ? {
+        'stroke-color': '#007bff',
+        'stroke-width': 2,
+        'fill-color': 'rgba(0, 123, 255, 0.2)'
+      } : undefined
     }
 
     // Use the new setCustomDataLayers function to handle the layer
+    // MapView will add OSM base layer automatically
     await setCustomDataLayers([newLayer])
+
+    // Update URL with the data URL parameter (mutually exclusive with example)
+    const url = new URL(window.location)
+    url.searchParams.delete('example') // Remove example param if it exists
+    url.searchParams.set('url', urlInput.value)
+    window.history.pushState({}, '', url)
 
     // Exit input mode
     isUrlInputMode.value = false
+    const loadedUrl = urlInput.value // Store before clearing
     urlInput.value = ''
 
-    console.log(`Successfully loaded data from: ${urlInput.value}`)
+    console.log(`Successfully loaded data from: ${loadedUrl}`)
   } catch (error) {
     console.error('Error loading URL data:', error)
     urlError.value = error.message || 'Failed to load data from URL'
@@ -262,12 +278,67 @@ const closeDropdownOnClickOutside = (event) => {
   }
 }
 
-// Auto-select example from URL query parameter
-const autoSelectFromURL = () => {
+// Auto-load from URL query parameters (example or url)
+const autoSelectFromURL = async () => {
   const urlParams = new URLSearchParams(window.location.search)
   const exampleParam = urlParams.get('example')
+  const urlParam = urlParams.get('url')
 
-  if (exampleParam) {
+  // URL parameter takes precedence over example
+  if (urlParam) {
+    // Load custom URL data
+    try {
+      // Validate URL format
+      let validUrl
+      try {
+        validUrl = new URL(urlParam)
+      } catch {
+        console.error('Invalid URL format in query parameter:', urlParam)
+        return
+      }
+
+      // Validate that the URL is accessible
+      const isValid = await validateDataUrl(urlParam)
+      if (!isValid) {
+        console.error('Unable to access URL from query parameter:', urlParam)
+        return
+      }
+
+      // Detect data format
+      const format = detectDataFormat(urlParam)
+
+      // Extract filename from URL for display
+      const filename = urlParam.split('/').pop().split('?')[0] || 'Custom dataset'
+
+      // Generate the new layer
+      const layerId = `custom-layer-${Date.now()}`
+      const newLayer = {
+        type: format === 'GeoTIFF' ? 'WebGLTile' : 'Vector',
+        id: layerId,
+        properties: {
+          id: layerId,
+          title: filename,
+          visible: true
+        },
+        source: {
+          type: format === 'GeoTIFF' ? 'GeoTIFF' : 'Vector',
+          url: urlParam,
+          format: format === 'GeoTIFF' ? undefined : format
+        },
+        style: format !== 'GeoTIFF' ? {
+          'stroke-color': '#007bff',
+          'stroke-width': 2,
+          'fill-color': 'rgba(0, 123, 255, 0.2)'
+        } : undefined
+      }
+
+      // Load the custom data layer
+      await setCustomDataLayers([newLayer])
+      console.log(`Auto-loaded data from URL parameter: ${urlParam}`)
+    } catch (error) {
+      console.error('Error auto-loading URL data:', error)
+    }
+  } else if (exampleParam) {
     // Find example by ID
     const example = examples.find((ex) => ex.id === exampleParam)
 
@@ -287,8 +358,9 @@ const selectExample = (example) => {
   isDropdownOpen.value = false
   setCurrentExample(example)
 
-  // Set URL parameter using example ID
+  // Set URL parameter using example ID (mutually exclusive with url param)
   const url = new URL(window.location)
+  url.searchParams.delete('url') // Remove url param if it exists
   if (example.id) {
     url.searchParams.set('example', example.id)
   } else {

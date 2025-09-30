@@ -122,14 +122,9 @@ const mapLayers = computed(() => {
     return [...baseLayers]
   }
 
-  // Check if example already includes OSM base layer
-  const hasOSMInExample = exampleLayers.some(
-    (layer) =>
-      layer?.source?.type === 'OSM' || (layer?.type === 'Tile' && layer?.source?.type === 'OSM'),
-  )
-
-  // Only add base layers if example doesn't already include them
-  const layers = hasOSMInExample ? [...exampleLayers] : [...baseLayers, ...exampleLayers]
+  // Data layers MUST come FIRST in the array to render on TOP
+  // OpenLayers renders in array order: first = bottom, last = top
+  const layers = [...exampleLayers, ...baseLayers]
 
   return layers
 })

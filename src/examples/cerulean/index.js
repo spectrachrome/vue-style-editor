@@ -34,14 +34,5 @@ export default {
         },
       ],
     },
-    {
-      type: 'Tile',
-      properties: {
-        title: 'OpenStreetMap',
-      },
-      source: {
-        type: 'OSM',
-      },
-    },
   ],
 }

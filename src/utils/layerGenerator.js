@@ -12,7 +12,7 @@ export function detectDataFormat(dataUrl) {
 
   // Check file extensions
   if (url.endsWith('.fgb')) {
-    return 'FlatGeobuf'
+    return 'FlatGeoBuf'
   }
   if (url.endsWith('.geojson') || url.endsWith('.json')) {
     return 'GeoJSON'
@@ -29,7 +29,7 @@ export function detectDataFormat(dataUrl) {
     return 'GeoTIFF'
   }
   if (url.includes('fgb') || url.includes('flatgeobuf')) {
-    return 'FlatGeobuf'
+    return 'FlatGeoBuf'
   }
 
   return 'Unknown'
@@ -45,7 +45,7 @@ export function generateLayerSource(dataUrl, format) {
   const detectedFormat = format || detectDataFormat(dataUrl)
 
   switch (detectedFormat) {
-    case 'FlatGeobuf':
+    case 'FlatGeoBuf':
       return {
         type: 'Vector',
         url: dataUrl,

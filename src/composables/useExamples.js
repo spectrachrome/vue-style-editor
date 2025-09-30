@@ -170,13 +170,28 @@ export function useExamples() {
     // Clear current example since we're loading custom data
     currentExample.value = null
 
-    // Process the layers with the current style if any
-    const processedLayers = await processLayers(layers, currentExampleStyle.value)
+    // Default style if no example style exists
+    const defaultStyle = {
+      'fill-color': 'rgba(0, 123, 255, 0.2)',
+      'stroke-color': '#007bff',
+      'stroke-width': 2
+    }
+
+    // Use current style or default
+    const styleToApply = currentExampleStyle.value || defaultStyle
+
+    // If no current style, set the default as current
+    if (!currentExampleStyle.value) {
+      currentExampleStyle.value = defaultStyle
+    }
+
+    // Process the layers with the style
+    const processedLayers = await processLayers(layers, styleToApply)
 
     processedLayers.forEach((l) => {
-      if (l.type === 'Vector' && currentExampleStyle.value) {
+      if (l.type === 'Vector') {
         // Process variables in style before applying
-        const processedStyle = updateVectorLayerStyle(currentExampleStyle.value)
+        const processedStyle = updateVectorLayerStyle(styleToApply)
         l.style = processedStyle
         // Also set complete layerConfig for eox-map compatibility
         if (!l.properties.layerConfig) {
@@ -185,14 +200,14 @@ export function useExamples() {
         // Include variables in the style object where eox-layercontrol expects them
         const styleWithVariables = {
           ...processedStyle,
-          variables: currentExampleStyle.value.variables || {}
+          variables: styleToApply.variables || {}
         }
 
         l.properties.layerConfig = {
           ...l.properties.layerConfig,
-          schema: currentExampleStyle.value.jsonform || currentExampleStyle.value.schema,
+          schema: styleToApply.jsonform || styleToApply.schema,
           style: styleWithVariables,  // Style now includes variables
-          legend: currentExampleStyle.value.legend
+          legend: styleToApply.legend
         }
       }
     })
