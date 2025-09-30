@@ -10,12 +10,18 @@
 
 <script setup>
 import 'color-legend-element'
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, onUnmounted } from 'vue'
 import { useExamples } from '../composables/useExamples.js'
 
 const layerControlRef = ref(null)
 const { currentExampleStyle, updateCurrentStyle, dataLayers } = useExamples()
 let isUpdatingFromLayerControl = false
+let isMounted = true
+
+// Clean up on unmount
+onUnmounted(() => {
+  isMounted = false
+})
 
 const handleGenericChange = (event) => {
   try {
@@ -78,12 +84,20 @@ const handleGenericChange = (event) => {
 }
 
 // Watch for style changes from the editor
-watch(currentExampleStyle, async (newStyle) => {
+watch(currentExampleStyle, async (newStyle, oldStyle) => {
   // Skip if the change came from the layer control itself
   if (isUpdatingFromLayerControl) return
 
   // Skip if no layer control ref
   if (!layerControlRef.value) return
+
+  // Skip if the entire style hasn't actually changed (prevent infinite loops)
+  // This compares the full style object, not just variables
+  const newStyleStr = JSON.stringify(newStyle || {})
+  const oldStyleStr = JSON.stringify(oldStyle || {})
+  if (newStyleStr === oldStyleStr) {
+    return
+  }
 
   console.log('Style changed from editor, variables:', newStyle?.variables)
 
@@ -92,7 +106,7 @@ watch(currentExampleStyle, async (newStyle) => {
 
   // Force the layer control to update with the new data
   // The requestUpdate() method is a Lit lifecycle method that forces a re-render
-  if (layerControlRef.value?.requestUpdate) {
+  if (isMounted && layerControlRef.value?.requestUpdate) {
     layerControlRef.value.requestUpdate()
     console.log('Triggered layer control update')
   }
@@ -109,7 +123,7 @@ watch(dataLayers, async (newLayers) => {
   await nextTick()
 
   // Force layer control to re-read the layer configuration
-  if (layerControlRef.value?.requestUpdate) {
+  if (isMounted && layerControlRef.value?.requestUpdate) {
     layerControlRef.value.requestUpdate()
     console.log('Forced layer control refresh after layer update')
   }
