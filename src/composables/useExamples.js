@@ -19,36 +19,11 @@ export function useExamples() {
     currentExampleStyle.value =
       typeof example.style === 'string' ? JSON.parse(example.style) : example.style
 
-    if (example) {
+if (example) {
       if (example.layers) {
-        console.log('Processing layers in setCurrentExample, layer count:', example.layers.length)
-        // Use the new layer definitions with format registry, applying editor style
+// Use the new layer definitions with format registry, applying editor style
+        // processLayers already handles style application correctly for all layer types
         const processedLayers = await processLayers(example.layers, currentExampleStyle.value)
-
-        processedLayers.forEach((l) => {
-          if (l.type === 'Vector') {
-            // Process variables in style before applying
-            const processedStyle = updateVectorLayerStyle(currentExampleStyle.value)
-            l.style = processedStyle
-            // Also set complete layerConfig for eox-map compatibility
-            if (!l.properties.layerConfig) {
-              l.properties.layerConfig = {}
-            }
-            // Include variables in the style object where eox-layercontrol expects them
-            const styleWithVariables = {
-              ...processedStyle,
-              variables: currentExampleStyle.value.variables || {}
-            }
-
-            l.properties.layerConfig = {
-              ...l.properties.layerConfig,
-              schema: currentExampleStyle.value.jsonform || currentExampleStyle.value.schema,
-              style: styleWithVariables,  // Style now includes variables
-              legend: currentExampleStyle.value.legend
-            }
-          }
-        })
-
         dataLayers.value = processedLayers
       } else {
         // Fallback to legacy approach
@@ -97,45 +72,19 @@ export function useExamples() {
     if (currentExample.value?.layers) {
       // Use current dataLayers which have calculated extents, not original example layers
       const layersWithExtents = dataLayers.value.length > 0 ? dataLayers.value : currentExample.value.layers
-      console.log('Processing layers in updateCurrentStyle, layer count:', layersWithExtents.length)
+// processLayers already handles style application correctly for all layer types
       const processedLayers = await processLayers(layersWithExtents, newStyle)
-
-      processedLayers.forEach((l) => {
-        if (l.type === 'Vector') {
-          // Process variables in style before applying
-          const processedStyle = updateVectorLayerStyle(newStyle)
-          l.style = processedStyle
-          // Also set complete layerConfig for eox-map compatibility
-          if (!l.properties.layerConfig) {
-            l.properties.layerConfig = {}
-          }
-          // Include variables in the style object where eox-layercontrol expects them
-          const styleWithVariables = {
-            ...processedStyle,
-            variables: newStyle.variables || {}
-          }
-
-          l.properties.layerConfig = {
-            ...l.properties.layerConfig,
-            schema: newStyle.jsonform || newStyle.schema,
-            style: styleWithVariables,  // Style now includes variables
-            legend: newStyle.legend
-          }
-        }
-      })
-
       dataLayers.value = processedLayers
     } else if (currentExample.value) {
       // Update legacy layer style
       const updatedLayers = dataLayers.value.map((layer) => {
-        // Process variables in style for legacy layers too
-        const processedStyle = updateVectorLayerStyle(newStyle)
-        const updatedLayer = {
-          ...layer,
-          style: processedStyle,
-        }
-        // Also set complete layerConfig for eox-map compatibility
+        const updatedLayer = { ...layer }
+
         if (layer.type === 'Vector') {
+          // Process variables in style for Vector layers
+          const processedStyle = updateVectorLayerStyle(newStyle)
+          updatedLayer.style = processedStyle
+
           if (!updatedLayer.properties.layerConfig) {
             updatedLayer.properties.layerConfig = {}
           }
@@ -151,6 +100,20 @@ export function useExamples() {
             style: styleWithVariables,  // Style now includes variables
             legend: newStyle.legend
           }
+        } else if (layer.type === 'WebGLTile') {
+          // For WebGLTile, keep the style with variables intact
+          updatedLayer.style = newStyle
+
+          if (!updatedLayer.properties.layerConfig) {
+            updatedLayer.properties.layerConfig = {}
+          }
+
+          updatedLayer.properties.layerConfig = {
+            ...updatedLayer.properties.layerConfig,
+            schema: newStyle.jsonform || newStyle.schema,
+            style: newStyle,  // Keep original style with variables
+            legend: newStyle.legend
+          }
         }
         return updatedLayer
       })
@@ -164,6 +127,38 @@ export function useExamples() {
     clearAllLayers()
   }
 
+  const setCustomDataLayers = async (layers) => {
+    startMapLoading()
+
+    // Clear current example since we're loading custom data
+    currentExample.value = null
+
+    // Default style if no example style exists
+    const defaultStyle = {
+      'fill-color': 'rgba(0, 123, 255, 0.2)',
+      'stroke-color': '#007bff',
+      'stroke-width': 2
+    }
+
+    // Use current style or default
+    const styleToApply = currentExampleStyle.value || defaultStyle
+
+    // If no current style, set the default as current
+    if (!currentExampleStyle.value) {
+      currentExampleStyle.value = defaultStyle
+    }
+
+    // Process the layers with the style
+    // processLayers already handles style application correctly for all layer types
+    const processedLayers = await processLayers(layers, styleToApply)
+    dataLayers.value = processedLayers
+
+    // Stop loading after a brief delay to let map update
+    setTimeout(() => {
+      stopMapLoading()
+    }, 1000)
+  }
+
   return {
     currentExample: computed(() => currentExample.value),
     currentExampleStyle: computed(() => currentExampleStyle.value),
@@ -174,5 +169,6 @@ export function useExamples() {
     clearAllLayers,
     clearCurrentExample,
     updateCurrentStyle,
+    setCustomDataLayers,
   }
 }
