@@ -1,5 +1,6 @@
 import { getFgbExtent } from './flatgeobuf.js'
 import { getGeoJSONExtent } from './geojson.js'
+import { getGeoTIFFExtent } from './geotiff.js'
 import { updateVectorLayerStyle } from '../utils/styleProcessor.js'
 
 /**
@@ -117,6 +118,52 @@ GeoJSONHandler.processLayer = async function (layer) {
   return processedLayer
 }
 
+// GeoTIFF handler for extent calculation
+const GeoTIFFHandler = Object.create(FormatHandler)
+GeoTIFFHandler.supports = (sourceType) => {
+  const type = sourceType?.toLowerCase()
+  return type === 'geotiff'
+}
+GeoTIFFHandler.processLayer = async function (layer) {
+  console.log('GeoTIFF handler called for layer:', layer.id || 'no-id', 'URL:', layer.source?.url)
+  const processedLayer = { ...layer }
+
+  // Skip extent calculation if layer already has an extent
+  if (layer.extent && Array.isArray(layer.extent) && layer.extent.length === 4) {
+    processedLayer.extent = layer.extent
+    processedLayer.properties = {
+      ...processedLayer.properties,
+      __extentCalculated: true
+    }
+  } else {
+    // Handle both url and sources array structures
+    const url = layer.source?.url || layer.source?.sources?.[0]?.url
+
+    if (url) {
+      try {
+        const extent = await getGeoTIFFExtent(url)
+
+        if (extent) {
+          processedLayer.extent = extent
+          // Add a visible marker that we can check
+          processedLayer.properties = {
+            ...processedLayer.properties,
+            __extentCalculated: true
+          }
+          console.log('GeoTIFF extent calculated:', extent)
+        } else {
+          console.warn('GeoTIFF extent calculation returned null for:', url)
+          // Continue processing without extent - the layer will still work without it
+        }
+      } catch (error) {
+        console.error('GeoTIFF extent calculation failed:', error.message)
+      }
+    }
+  }
+
+  return processedLayer
+}
+
 // Default handler for unsupported formats
 const DefaultHandler = Object.create(FormatHandler)
 DefaultHandler.supports = () => true // Catches all
@@ -125,6 +172,7 @@ DefaultHandler.supports = () => true // Catches all
 const formatHandlers = new Map([
   ['FlatGeoBuf', FlatGeoBufHandler],
   ['GeoJSON', GeoJSONHandler],
+  ['GeoTIFF', GeoTIFFHandler],
   ['default', DefaultHandler],
 ])
 
