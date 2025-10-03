@@ -4,9 +4,7 @@ export default {
   id: 'greenland-ice-thickness',
   name: 'Greenland Ice Thickness',
   format: 'fgb',
-  dataUrl:
-    // 'https://workspace-ui-public.cif.gtif.eox.at/api/public/share/public-4WaZei3Y-02/examples/202501200900_SouthEast_RIC-processed.fgb',
-    '/202501200900_SouthEast_RIC-processed.fgb',
+  dataUrl: '/vue-style-editor/data/fgb/202501200900_SouthEast_RIC-processed.fgb',
   style,
   layers: [
     {

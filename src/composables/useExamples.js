@@ -12,7 +12,8 @@ const { startMapLoading, stopMapLoading } = useLoading()
 
 export function useExamples() {
   const setCurrentExample = async (example) => {
-    console.log('setCurrentExample called for:', example.name)
+    console.log('[useExamples] setCurrentExample called for:', example.name)
+    console.log('[useExamples] example.layers:', example.layers)
     startMapLoading()
 
     currentExample.value = example
@@ -21,10 +22,13 @@ export function useExamples() {
 
 if (example) {
       if (example.layers) {
+        console.log('[useExamples] Using new layer format, calling processLayers with', example.layers.length, 'layers')
 // Use the new layer definitions with format registry, applying editor style
         // processLayers already handles style application correctly for all layer types
         const processedLayers = await processLayers(example.layers, currentExampleStyle.value)
+        console.log('[useExamples] processLayers returned', processedLayers.length, 'layers')
         dataLayers.value = processedLayers
+        console.log('[useExamples] dataLayers.value set')
       } else {
         // Fallback to legacy approach
         const format = detectDataFormat(example.dataUrl)

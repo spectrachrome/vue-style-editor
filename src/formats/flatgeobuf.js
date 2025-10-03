@@ -24,14 +24,17 @@ async function getFgbBuffer(url) {
 }
 
 async function getFgbExtent(url) {
+  console.log('[flatgeobuf] getFgbExtent called with url:', url)
+
   // Check extent cache first
   if (extentCache.has(url)) {
-    console.log(`FGB extent cache hit for: ${url}`)
+    console.log(`[flatgeobuf] FGB extent cache hit for: ${url}`)
     return extentCache.get(url)
   }
 
-  console.log(`Calculating FGB extent for: ${url}`)
+  console.log(`[flatgeobuf] Calculating FGB extent for: ${url}`)
   const buffer = await getFgbBuffer(url)
+  console.log('[flatgeobuf] Got buffer, size:', buffer.byteLength)
 
   let minX = Infinity
   let minY = Infinity

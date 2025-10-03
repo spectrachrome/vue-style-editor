@@ -197,19 +197,27 @@ export function registerFormatHandler(sourceType, handler) {
  * @returns {Promise<Array>} - Array of processed layers
  */
 export async function processLayers(layers, editorStyle = null) {
+  console.log('[formatRegistry] processLayers called with', layers.length, 'layers')
   const processedLayers = []
 
   for (const layer of layers) {
+    console.log('[formatRegistry] Processing layer:', layer.properties?.title, 'type:', layer.type, 'source.type:', layer.source?.type, 'source.format:', layer.source?.format)
+
     // Determine the correct handler based on source format or type
     let handler
     if (layer.source?.format) {
+      console.log('[formatRegistry] Using format:', layer.source.format)
       // Use format if specified (e.g., FlatGeoBuf, GeoJSON)
       handler = getFormatHandler(layer.source.format)
     } else {
+      console.log('[formatRegistry] Using source type:', layer.source?.type)
       // Fall back to source type
       handler = getFormatHandler(layer.source?.type)
     }
+    console.log('[formatRegistry] Selected handler:', handler.constructor.name || 'DefaultHandler')
+    console.log('[formatRegistry] Calling handler.processLayer...')
     let processedLayer = await handler.processLayer(layer)
+    console.log('[formatRegistry] handler.processLayer completed')
 
     // Ensure layer has proper ID structure
     if (!processedLayer.id && processedLayer.properties?.id) {

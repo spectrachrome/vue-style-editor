@@ -15,7 +15,8 @@
       "WebFetch(domain:guide.cloudnativegeo.org)",
       "Bash(sed:*)",
       "Bash(git add:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []
