@@ -125,6 +125,7 @@ import { validateDataUrl, detectDataFormat } from '../utils/layerGenerator.js'
 
 const isDropdownOpen = ref(false)
 const dropdownButtonRef = ref(null)
+const dropdownPosition = ref({})
 const { setCurrentExample, currentExample, dataLayers, currentExampleStyle, clearCurrentExample, setCustomDataLayers } = useExamples()
 
 // URL input mode state
@@ -256,21 +257,20 @@ const loadUrlData = async () => {
 
 const toggleDropdown = () => {
   isDropdownOpen.value = !isDropdownOpen.value
+
+  // Calculate position ONCE when opening, not reactively
+  if (isDropdownOpen.value && dropdownButtonRef.value) {
+    const buttonRect = dropdownButtonRef.value.getBoundingClientRect()
+    dropdownPosition.value = {
+      position: 'fixed',
+      top: `${buttonRect.bottom + 8}px`,
+      right: `${window.innerWidth - buttonRect.right}px`,
+      minWidth: '200px',
+    }
+  } else {
+    dropdownPosition.value = {}
+  }
 }
-
-const dropdownPosition = computed(() => {
-  if (!isDropdownOpen.value || !dropdownButtonRef.value) {
-    return {}
-  }
-
-  const buttonRect = dropdownButtonRef.value.getBoundingClientRect()
-  return {
-    position: 'fixed',
-    top: `${buttonRect.bottom + 8}px`,
-    right: `${window.innerWidth - buttonRect.right}px`,
-    minWidth: '200px',
-  }
-})
 
 const closeDropdownOnClickOutside = (event) => {
   if (!event.target.closest('.dropdown-container')) {
