@@ -14,6 +14,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { debounce } from 'lodash'
+import stringify from 'json-stringify-pretty-compact'
 import { useExamples } from '../composables/useExamples.js'
 
 const isDarkMode = ref(false)
@@ -226,7 +227,7 @@ const editorConfig = computed(() => {
 watch(currentExampleStyle, (newStyle) => {
   if (aceEditorInstance && newStyle) {
     const currentContent = aceEditorInstance.getValue()
-    const newContent = JSON.stringify(newStyle, null, 2)
+    const newContent = stringify(newStyle, { maxLength: 80 })
 
     // Only update if content actually changed to avoid unnecessary updates
     if (currentContent !== newContent) {
@@ -289,7 +290,7 @@ onUnmounted(() => {
 
 const formValue = computed(() => ({
   code: currentExampleStyle.value
-    ? JSON.stringify(currentExampleStyle.value, null, 2)
+    ? stringify(currentExampleStyle.value, { maxLength: 80 })
     : '// Select an example from the dropdown to view its style configuration\n// or write your own style here',
 }))
 

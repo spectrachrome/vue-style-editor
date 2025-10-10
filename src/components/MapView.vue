@@ -299,7 +299,34 @@ const updateMapView = async () => {
 // Track last layer data to detect style-only changes
 let lastLayerData = null
 
-// Helper to update style variables for WebGLTile layers
+// Helper to check if only variables changed (not the shader itself)
+const onlyVariablesChanged = (oldStyle, newStyle) => {
+  if (!oldStyle || !newStyle) return false
+
+  // Deep clone to remove Vue reactivity proxies before comparison
+  const oldClone = JSON.parse(JSON.stringify(oldStyle))
+  const newClone = JSON.parse(JSON.stringify(newStyle))
+
+  // Remove variables from comparison
+  delete oldClone.variables
+  delete newClone.variables
+
+  // Compare everything except variables
+  const oldStr = JSON.stringify(oldClone)
+  const newStr = JSON.stringify(newClone)
+  const result = oldStr === newStr
+
+  console.log('[MapView] onlyVariablesChanged:', result)
+  if (!result) {
+    console.log('[MapView] Shader changed detected!')
+    console.log('[MapView] Old style (no vars):', oldClone)
+    console.log('[MapView] New style (no vars):', newClone)
+  }
+
+  return result
+}
+
+// Helper to update style variables for WebGLTile layers (fast path)
 const updateGeoTIFFStyleVariables = async (layerId, variables) => {
   if (!mapRef.value?.map) return
 
@@ -319,6 +346,36 @@ const updateGeoTIFFStyleVariables = async (layerId, variables) => {
       break
     }
   }
+}
+
+// Helper to force full layer recompilation (slow path - recompiles shader)
+const recompileWebGLTileLayer = async (layerId, newStyle) => {
+  if (!mapRef.value?.map) return
+
+  const olMap = mapRef.value.map
+  const layers = olMap.getLayers().getArray()
+  const layerIndex = layers.findIndex((l) => l.get('id') === layerId)
+
+  if (layerIndex === -1) return
+
+  const oldLayer = layers[layerIndex]
+
+  // Get the layer configuration from eox-map
+  const eoxLayers = mapRef.value.layers
+  const eoxLayerIndex = eoxLayers.findIndex((l) => l.id === layerId)
+
+  if (eoxLayerIndex === -1) return
+
+  // Update the style in the layer configuration
+  const updatedLayers = [...eoxLayers]
+  updatedLayers[eoxLayerIndex] = {
+    ...updatedLayers[eoxLayerIndex],
+    style: newStyle
+  }
+
+  // Force eox-map to recreate the layer by setting layers property
+  // This triggers a full shader recompilation
+  mapRef.value.layers = updatedLayers
 }
 
 // Watch for layer changes and preserve view during style updates
@@ -361,14 +418,90 @@ watch(
       }
     }
 
-    // Update layers
-    await updateMapLayers()
+    // Detect if we need full recompilation or just variable updates
+    let needsFullRecompilation = false
+    let shouldCheckRecompilation = false
 
-    // For WebGLTile layers with style variables, update them directly
-    await nextTick()
-    for (const layer of newLayers) {
-      if (layer.type === 'WebGLTile' && layer.style?.variables) {
-        await updateGeoTIFFStyleVariables(layer.id, layer.style.variables)
+    if (lastLayerData && lastLayerData.length === newLayers.length) {
+      console.log('[MapView] Checking if recompilation needed...')
+
+      for (let i = 0; i < newLayers.length; i++) {
+        const newLayer = newLayers[i]
+        const oldLayer = lastLayerData[i]
+
+        if (newLayer?.type === 'WebGLTile' && oldLayer?.type === 'WebGLTile') {
+          shouldCheckRecompilation = true
+          console.log('[MapView] Comparing WebGLTile layer', i)
+          // Check if shader code changed (not just variables)
+          if (!onlyVariablesChanged(oldLayer.style, newLayer.style)) {
+            needsFullRecompilation = true
+            break
+          }
+        }
+      }
+    }
+
+    console.log('[MapView] shouldCheckRecompilation:', shouldCheckRecompilation, 'needsFullRecompilation:', needsFullRecompilation)
+
+    if (needsFullRecompilation) {
+      // Full layer recompilation path (shader changed)
+      console.log('[MapView] Shader changed, updating shader without refetching data')
+
+      // DON'T call updateMapLayers() - it triggers eox-map to recreate the layer
+      // Instead, update the shader directly on the OpenLayers layer
+      await nextTick()
+
+      if (mapRef.value?.map) {
+        const olMap = mapRef.value.map
+        const olLayers = olMap.getLayers().getArray()
+
+        // Update shader for each WebGLTile layer
+        for (const newLayer of newLayers) {
+          if (newLayer.type === 'WebGLTile') {
+            const olLayer = olLayers.find(l => l.get('id') === newLayer.id)
+
+            if (olLayer && olLayer.setStyle && typeof olLayer.setStyle === 'function') {
+              console.log('[MapView] Updating shader for layer:', newLayer.id)
+              console.log('[MapView] New style:', newLayer.style)
+              try {
+                // Update the style directly on the OpenLayers WebGLTile layer
+                // This should recompile the shader without refetching data
+                olLayer.setStyle(newLayer.style)
+                console.log('[MapView] Shader updated successfully')
+              } catch (error) {
+                console.error('[MapView] Error updating shader:', error)
+              }
+            } else {
+              console.warn('[MapView] Layer found but setStyle not available:', olLayer)
+            }
+          }
+        }
+      }
+    } else {
+      // Fast path: only update variables if shader hasn't changed
+
+      // Check if we have existing WebGLTile layers that only need variable updates
+      let shouldUseVariableUpdatePath = false
+
+      if (lastLayerData && shouldCheckRecompilation) {
+        // Only use the fast variable update path if we detected WebGLTile layers
+        // and they already exist (not first load)
+        shouldUseVariableUpdatePath = true
+      }
+
+      if (shouldUseVariableUpdatePath) {
+        // Fast path: update variables directly without calling updateMapLayers
+        console.log('[MapView] Using fast variable update path')
+        await nextTick()
+        for (const layer of newLayers) {
+          if (layer.type === 'WebGLTile' && layer.style?.variables) {
+            await updateGeoTIFFStyleVariables(layer.id, layer.style.variables)
+          }
+        }
+      } else {
+        // Normal path: call updateMapLayers (first load, or non-WebGLTile layers)
+        console.log('[MapView] Using normal update path')
+        await updateMapLayers()
       }
     }
 
